@@ -49,16 +49,16 @@ RESET:   EQU      *
          BSR.S    SETACIA           Setup ACIAs 
 	 BSR.L	  X_SET		    what change did i do here
          BSR.L    SET_DCB           Setup DCB table in RAM
-         BSR.S    NEWLINE
+         BSR	  NEWLINE
          LEA.L    BANNER(PC),A4    
-         BSR.S    PSTRING
-         BSR.S    NEWLINE           
+         BSR      PSTRING
+         BSR      NEWLINE           
 	 LEA.L	  MODIFY(PC),A4
-         BSR.S    PSTRING
+         BSR      PSTRING
          BSR.S    NEWLINE
 	 LEA.L	  WHY(PC),A4
-         BSR.S    PSTRING
-         BSR.S    NEWLINE
+         BSR      PSTRING
+         BSR.B    NEWLINE
 	 LEA.L	  WHERE(PC),A4
          BSR.S    PSTRING
          BSR.S    NEWLINE
@@ -73,11 +73,27 @@ RESET:   EQU      *
 NO_EXT:  NOP                        Two NOPs to allow for a future 
          NOP                        call to an initialization routine 
 WARM:    CLR.L    D7                Warm entry point - clear error flag 
-         BSR.S    NEWLINE           Print a newline 
+		 BSR.S    NEWLINE           Print a newline
+* Login Routine Goes below this line
+		 BSR.S	  LOGIN				Make sure user logs in with a valid u/p 
          BSR.S    GETLINE           Get a command line 
          BSR      TIDY              Tidy up input buffer contents 
          BSR      EXECUTE           Interpret command 
          BRA      WARM              Repeat indefinitely 
+*
+**
+*
+LOGIN 	 EQU	 *
+		 LEA.L   UNAME(PC),A4
+		 BSR.S	 PSTRING
+		 BSR.S	 GETLINE
+		 MOVE.L	 #0,(A3)
+		 BSR.S	 NEWLINE
+		 LEA.L	 (A1),A4
+		 BSR.S	 PSTRING
+		 BSR.S	 NEWLINE
+		 RTS
+
 * 
 ************************************************************************* 
 * 
@@ -1152,7 +1168,8 @@ X_UN    EQU     *                 Uninitialized exception vector routine
 ************************************************************************* 
 * 
 *  All strings and other fixed parameters here 
-* 
+*
+UNAME	 DC.B	  'Username: ',0 
 BANNER   DC.B     'TSBUG 2 Version 23.07.86',0,0
 MODIFY	 DC.B	  'Modified by Eugene A. Rockey Jr. Jan.05.2010',0,0
 WHY      DC.B     'for use with the M68000 Minimal Computer Configuration',0,0 
@@ -1275,7 +1292,6 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
-
 *~Font name~Courier New~
 *~Font size~10~
 *~Tab type~1~
