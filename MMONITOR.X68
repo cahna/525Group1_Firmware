@@ -1,4 +1,16 @@
-*        TSBUG2 - 68000 monitor - version of 05 January 2010 
+*
+* Motorola 68000 Firmware
+* Forked from version 05 January 2010
+* 
+* University of Louisville Speed School of Engineering
+* CECS 525 - Microcomputer Design (Fall 2011)
+*
+* Group 1 Members:
+*	Adrian Fletcher
+*	Conor Heine
+*	Nick Searcy
+*	Luke Spicer
+*
 
 	 ORG      $0
          DC.L     STACK,RESET
@@ -74,10 +86,41 @@ NO_EXT:  NOP                        Two NOPs to allow for a future
          NOP                        call to an initialization routine 
 WARM:    CLR.L    D7                Warm entry point - clear error flag 
          BSR.S    NEWLINE           Print a newline 
+* LOGIN ROUTINE GOES BELOW THIS LINE
+	 BSR.S	  LOGIN		    Make sure user logs in with a valid u/p
          BSR.S    GETLINE           Get a command line 
          BSR      TIDY              Tidy up input buffer contents 
          BSR      EXECUTE           Interpret command 
          BRA      WARM              Repeat indefinitely 
+*
+*************************************************************************
+*
+*  Login routine: Make sure user enters a valid username and password 
+*		  to continue. If 3 failed attempts occur, the system
+*		  will lock up by entering an infinite loop.
+*
+LOGIN	 EQU	  *
+ASKUN	 BSR.S	  NEWLINE
+	 LEA.L    UNAME(PC),A4    
+         BSR.S    PSTRING	    Ask for username
+	 BSR.S    GETLINE           Get input username
+	 CMPA	  (A3),A1	    Did the user just hit enter like a smartass?
+	 BEQ	  ASKPW
+	 BRA	  ASKUN
+ASKPW	 LEA.L	  #0,D3
+	 MOVE.L	  D3,(A3)	    Place null char @ end of line
+         BSR.S    NEWLINE
+	 LEA.L	  (A1),A4
+	 BSR.S	  PSTRING	    Echo what the user typed
+	 BSR.S	  NEWLINE
+* TO-DO:
+* - Compare username to available username(s)
+* - Get password
+* - Echo password
+* - Make characters appear as * when entering password
+* - Compare password to password for user (maybe add hash function for security)
+	 RTS
+
 * 
 ************************************************************************* 
 * 
@@ -1129,6 +1172,10 @@ MODIFY	 DC.B	  'Modified by Eugene A. Rockey Jr. Jan.05.2010',0,0
 WHY      DC.B     'for use with the M68000 Minimal Computer Configuration',0,0 
 WHERE    DC.B     'University of Louisville',0,0
 ADDRE	 DC.B	  'CECS 525, www.cs.louisville.edu',0,0
+UNAME	 DC.B	  'Username: ',0
+PWORD	 DC.B	  'Password: ',0
+LFAIL	 DC.B	  'Invalid username and/or password',0
+WELCOME	 DC.B	  'Welcome back, ',0
 CRLF     DC.B     CR,LF,'TS2MON >',0 
 HEADER   DC.B     CR,LF,'S','1',0,0 
 TAIL     DC.B     'S9  ',0,0 

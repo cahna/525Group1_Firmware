@@ -84,15 +84,15 @@ WARM:    CLR.L    D7                Warm entry point - clear error flag
 **
 *
 LOGIN 	 EQU	 *
-		 LEA.L   UNAME(PC),A4
-		 BSR.S	 PSTRING
-		 BSR.S	 GETLINE
-		 MOVE.L	 #0,(A3)
-		 BSR.S	 NEWLINE
-		 LEA.L	 (A1),A4
-		 BSR.S	 PSTRING
-		 BSR.S	 NEWLINE
-		 RTS
+	 LEA.L   UNAME(PC),A4
+	 BSR.S	 PSTRING
+	 BSR.S	 GETLINE
+	 MOVE.L	 #0,(A3)
+	 BSR.S	 NEWLINE
+	 LEA.L	 (A1),A4
+	 BSR.S	 PSTRING
+	 BSR.S	 NEWLINE
+	 RTS
 
 * 
 ************************************************************************* 
