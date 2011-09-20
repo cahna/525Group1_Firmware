@@ -1,18 +1,6 @@
-*
-* Motorola 68000 Firmware
-* Forked from version 05 January 2010
-* 
-* University of Louisville Speed School of Engineering
-* CECS 525 - Microcomputer Design (Fall 2011)
-*
-* Group 1 Members:
-*	Adrian Fletcher
-*	Conor Heine
-*	Nick Searcy
-*	Luke Spicer
-*
+*        TSBUG2 - 68000 monitor - version of 05 January 2010 
 
-	 ORG      $0
+		 ORG      $0000				Changed from $0	
          DC.L     STACK,RESET
 *                                   Symbol equates 
 BS       EQU      $08               Back_space 
@@ -58,25 +46,25 @@ RESET:   EQU      *
          CLR.L    UTAB(A6)          Reset pointer to user extension table 
          CLR.B    ECHO(A6)          Set automatic character echo 
          CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
-         BSR.S    SETACIA           Setup ACIAs 
-	 BSR.L	  X_SET		    what change did i do here
+         BSR      SETACIA           Setup ACIAs 
+	 	 BSR.L	  X_SET		    what change did i do here
          BSR.L    SET_DCB           Setup DCB table in RAM
-         BSR.S    NEWLINE
+         BSR	  NEWLINE
          LEA.L    BANNER(PC),A4    
-         BSR.S    PSTRING
-         BSR.S    NEWLINE           
-	 LEA.L	  MODIFY(PC),A4
-         BSR.S    PSTRING
-         BSR.S    NEWLINE
-	 LEA.L	  WHY(PC),A4
-         BSR.S    PSTRING
-         BSR.S    NEWLINE
-	 LEA.L	  WHERE(PC),A4
-         BSR.S    PSTRING
-         BSR.S    NEWLINE
-	 LEA.L	  ADDRE(PC),A4
-         BSR.S    PSTRING
-         BSR.S    NEWLINE
+         BSR      PSTRING
+         BSR      NEWLINE           
+	 	 LEA.L	  MODIFY(PC),A4
+         BSR      PSTRING
+         BSR      NEWLINE
+	 	 LEA.L	  WHY(PC),A4
+         BSR      PSTRING
+         BSR      NEWLINE
+	 	 LEA.L	  WHERE(PC),A4
+         BSR      PSTRING
+         BSR      NEWLINE
+	 	 LEA.L	  ADDRE(PC),A4
+         BSR      PSTRING
+         BSR      NEWLINE
          MOVE.L   #$3000,A0         A0 points to extension ROM 
          MOVE.L   (A0),D0           Read first longword in extension ROM 
          CMP.L    #'ROM2',D0        If extension begins with 'ROM2' then 
@@ -84,42 +72,127 @@ RESET:   EQU      *
          JSR      8(A0)             else continue 
 NO_EXT:  NOP                        Two NOPs to allow for a future 
          NOP                        call to an initialization routine 
-WARM:    CLR.L    D7                Warm entry point - clear error flag 
-         BSR.S    NEWLINE           Print a newline 
-* LOGIN ROUTINE GOES BELOW THIS LINE
-	 BSR.S	  LOGIN		    Make sure user logs in with a valid u/p
-         BSR.S    GETLINE           Get a command line 
+		 
+		 CLR.L    D7                Warm entry point - clear error flag 
+		 BSR      NEWLINE           Print a newline
+		 BSR 	  LOGIN				Make sure user logs in with a valid u/p 
+WARM:	 CLR.L    D7                Warm entry point - clear error flag
+	     BSR      NEWLINE           Print a newline
+		 BSR      GETLINE           Get a command line 
          BSR      TIDY              Tidy up input buffer contents 
          BSR      EXECUTE           Interpret command 
          BRA      WARM              Repeat indefinitely 
 *
+**
+* LOGIN - Authenticate before allowing use of the 68k
+* To-do:
+*	- Validate username
+*	- Get password
+*	- Make password display as all *'s
+*	- validate password
+*	- if 3 failed attempts, infinite loop
+*	- Fix backspacing problem in GETLINE
+*
+* ASKUNAME DC.B	  'Username: ',0,0
+* ASKPWORD DC.B	  'Password: ',0,0
+* VUNAME   DC.B	  'group1',0
+* VPWORD   DC.B	  'password',0
+* INVUN	   DC.B	  'Invalid username...",0,0
+* INVPW	   DC.B	  'Invalid password...",0,0
+
+LOGIN 	EQU	 	*
+		MOVE.L	#0,D5			Use D5 to store the number of incorrect attempts
+ASKUN	BSR		NEWLINE
+		LEA.L	ASKUNAME,A4		Ask for a username
+		BSR		PSTRING
+		CLR.B	ECHO(A6)
+		BSR		GETLINE			Get username
+		LEA		VUNAME,A4		Load the address of the valid username to A4
+		BSR		VALID8			Validate the username
+		CMP		#1,D0			Is it valid?
+		BEQ		PWO				If so, ask for the password
+		BSR  	NEWLINE			Otherwise, ask for them to try again
+		LEA.L	INVUN,A4
+		BSR  	PSTRING
+		ADDQ	#1,D5			Increment the number of incorrect attempts
+		CMP		#3,D5			Have we reached max attempts?
+		BNE		STOK
+		BSR		LOCKUP			If the number of incorrect attempts is 3, lock up
+STOK	BRA		ASKUN
+PWO		MOVE.L	#0,D5			Reset incorrect attempts - 3 tries each @ username and pw
+ASKPW	BSR 	NEWLINE
+		LEA.L  	ASKPWORD(PC),A4
+		BSR		PSTRING			Ask for a password
+		MOVE.B	#2,ECHO(A6)
+		BSR		GETLINE
+		CLR.B	ECHO(A6)
+		LEA		VPWORD,A4		Load the address of the valid password to A4
+		BSR		VALID8			Validate the password
+		CMP		#1,D0			Is it valid?
+		BEQ		ALLGOOD			Then, we've successfully authenticated
+		BSR 	NEWLINE			Otherwise, ask for them to try again
+		LEA.L	INVPW,A4
+		BSR 	PSTRING
+		ADDQ	#1,D5			Increment the number of incorrect attempts
+		CMP		#3,D5			Have we reached max attempts?
+		BNE		STOK2
+		BSR		LOCKUP			If the number of incorrect attempts is 3, lock up
+STOK2	BRA		ASKPW			
+ALLGOOD	RTS
+
+*
+***************************************************************************
+* LOCKUP - Tells the user theyve been locked out and enters an infinite loop
+*
+LOCKUP	EQU		*
+		BSR		NEWLINE
+		LEA.L	LOCKED(PC),A4	; Tell the user they've been locked out
+		BSR		PSTRING
+LOCKLP	NOP						; Infinite loop
+		BRA		LOCKLP
+		RTS						; Just to be safe
+
+
+*
 *************************************************************************
+* VALID8 - Validate the entered username from the LOGIN subroutine
+*	Preconditions:	
+*		1.  GETLINE was executed immediately before branching to this 
+*			subroutine. (Implies A1 points to start
+*			of GETLINE buffer, A2 points to end of buffer, and
+*			A3 points to the next available spot in the buffer)
+*		2.  VUSER is a valid null-terminated string that
+*			defines the valid username for the 68k firmware, and
+*			VPWORD is a valid null-terminated string that
+*			defines the valid password for the 68k firmware.
+*		3.  A4 contains the start address of the string we're comparing the
+*			user input to
+*	Postconditions: 
+*		3.	D0 will be either a 1 or 0 indicating TRUE or
+*			FALSE, respectively.
+*	Pseudocode:
+*		Set D0 to true; If we find a discrepancy, we'll set to false
+*		Set offset to 0; Offset from beginning of uname string and test string
+*		Loop until nul char is reached in either test str or uname str
+*			if str[offset] == uname[offset] then increment offset and continue;
+*			else set D0 to false and branch to END of subroutine
+*		END LOOP
+*		Is str[offset] == uname[offset == null_char?
+*			yes - branch to END of subroutine (true)
+*			no  - set D0 to false
+*		RTS
 *
-*  Login routine: Make sure user enters a valid username and password 
-*		  to continue. If 3 failed attempts occur, the system
-*		  will lock up by entering an infinite loop.
-*
-LOGIN	 EQU	  *
-ASKUN	 BSR.S	  NEWLINE
-	 LEA.L    UNAME(PC),A4    
-         BSR.S    PSTRING	    Ask for username
-	 BSR.S    GETLINE           Get input username
-	 CMPA	  (A3),A1	    Did the user just hit enter like a smartass?
-	 BEQ	  ASKPW
-	 BRA	  ASKUN
-ASKPW	 LEA.L	  #0,D3
-	 MOVE.L	  D3,(A3)	    Place null char @ end of line
-         BSR.S    NEWLINE
-	 LEA.L	  (A1),A4
-	 BSR.S	  PSTRING	    Echo what the user typed
-	 BSR.S	  NEWLINE
-* TO-DO:
-* - Compare username to available username(s)
-* - Get password
-* - Echo password
-* - Make characters appear as * when entering password
-* - Compare password to password for user (maybe add hash function for security)
-	 RTS
+VALID8 	EQU		*
+		MOVE.L	#1,D0			Set D0 to true to start
+VLOOP	CMP.B	#0,(A4)			Check to see if character in string is null
+		BNE		NOTNULL			If its not null, continue
+		CMP.B	#0,(A1)			Check to see if the user input is newline
+		BRA		DONE			If it is, then we are done, return true...
+NOTNULL	CMP.B	(A1)+,(A4)+		Compare the characters and postincrement
+		BNE		SETF			If they're not equal, set false flag
+		BRA		VLOOP			Loop
+SETF	MOVE.L	#0,D0			Sets our D0 flag to false
+DONE	RTS
 
 * 
 ************************************************************************* 
@@ -453,11 +526,11 @@ LOAD3    EQU      *                 Exit point from LOAD
          MOVE.L   (A7)+,CN_IVEC(A6) Clean up by restoring input device 
          MOVE.L   (A7)+,CN_OVEC(A6) and output device name 
          CLR.B    ECHO(A6)          Restore input character echo 
-         BTST   #0,D7             Test for input errors 
+         BTST     #0,D7             Test for input errors 
          BEQ.S    LOAD4             If no I/P error then look at checksum 
          LEA.L    ERMES1(PC),A4     Else point to error message 
          BSR      PSTRING           Print it 
-LOAD4    BTST   #3,D7             Test for checksum error 
+LOAD4    BTST     #3,D7             Test for checksum error 
          BEQ.S    LOAD5             If clear then exit 
          LEA.L    ERMES3(PC),A4     Else point to error message 
          BSR      PSTRING           Print it and return 
@@ -651,7 +724,7 @@ CON_IN   MOVEM.L D1/A1,-(A7)     Save working registers
          MOVE.L  (A1),A1         Get address of ACIA in A1 
          CLR.B   19(A0)          Clear logical error in DCB 
 CON_I1   MOVE.B  (A1),D1         Read ACIA status 
-         BTST  #0,D1           Test RDRF 
+         BTST  	 #0,D1           Test RDRF 
          BEQ     CON_I1          Repeat until RDRF true 
          MOVE.B  D1,18(A0)       Store physical status in DCB 
          AND.B   #%011110100,D1  Mask to input error bits 
@@ -671,16 +744,16 @@ CON_OUT  MOVEM.L A1/D1-D2,-(A7)  Save working registers
          MOVE.L  (A1),A1         Get address of ACIA in A1 
          CLR.B   19(A0)          Clear logical error in DCB 
 CON_OT1  MOVE.B  (A1),D1         Read ACIA status 
-         BTST  #0,D1           Test RDRF bit (any input?) 
+         BTST  	 #0,D1           Test RDRF bit (any input?) 
          BEQ.S   CON_OT3         If no input then test output status 
          MOVE.B  2(A1),D2        Else read the input 
          AND.B   #%01011111,D2   Strip parity and bit 5 
          CMP.B   #WAIT,D2        and test for a wait condition 
          BNE.S   CON_OT3         If not wait then ignore and test O/P 
 CON_OT2  MOVE.B  (A1),D2         Else read ACIA status register 
-         BTST  #0,D2           and poll ACIA until next char received 
+         BTST    #0,D2           and poll ACIA until next char received 
          BEQ     CON_OT2 
-CON_OT3  BTST  #1,D1           Repeat 
+CON_OT3  BTST  	 #1,D1           Repeat 
          BEQ     CON_OT1          until ACIA Tx ready 
          MOVE.B  D1,18(A0)       Store status in DCB physical error 
          MOVE.B  D0,2(A1)        Transmit output 
@@ -715,20 +788,52 @@ AUX_OT1  BTST.B  #1,(A1)         Test for ready to transmit
 GETCHAR  MOVE.L  A0,-(A7)        Save working register 
          MOVE.L  CN_IVEC(A6),A0  A0 points to name of console DCB 
          BSR.S   IO_OPEN         Open console (get DCB address in A0) 
-         BTST  #3,D7           D7(3) set if open error 
+         BTST  	 #3,D7           D7(3) set if open error 
          BNE.S   GETCH3          If error then exit now 
          BSR     IO_REQ          Else execute I/O transaction 
          AND.B   #$7F,D0         Strip msb of input 
+         MOVE	 D0,D2
          TST.B   U_CASE(A6)      Test for upper -> lower case conversion 
          BNE.S   GETCH2          If flag not zero do not convert case 
-         BTST  #6,D0           Test input for lower case 
+		 MOVE	 D0,D2
+         BTST  	 #6,D0           Test input for lower case 
          BEQ.S   GETCH2          If upper case then skip conversion 
          AND.B   #%11011111,D0   Else clear bit 5 for upper case conv 
-GETCH2   TST.B   ECHO(A6)        Do we need to echo the input? 
-         BNE.S   GETCH3          If ECHO not zero then no echo 
-         BSR.S   PUTCHAR         Else echo the input 
-GETCH3   MOVE.L  (A7)+,A0        Restore working register 
+		 MOVE.B	 D0,D2
+GETCH2   CMP.B   #1,ECHO(A6)     Do we need to echo the input? 
+         BEQ.S   GETCH3          If ECHO is 1 then no echo 
+		 CMP.B	 #2,ECHO(A6)	 Should we display chars or stars?
+		 BNE	 CHARS
+		 MOVE.B	 D0,D2
+		 MOVE.B	 #'*',D0
+CHARS    BSR.S   PUTCHAR         Else echo the input 
+GETCH3   MOVE	 D2,D0
+		 MOVE.L  (A7)+,A0        Restore working register 
          RTS                     and return 
+
+*GETCHAR	 MOVE.L	 A0,-(A7)		 Save working register
+*		 MOVE.B	 #5,D0			 Read single ASCII character into D1.B
+*		 TRAP	 #15
+*		 MOVE.B	 D1,D0			   
+*         AND.B   #$7F,D0         Strip msb of input
+*         MOVE	 D0,D2
+*         TST.B   U_CASE(A6)      Test for upper -> lower case conversion 
+*         BNE.S   GETCH2          If flag not zero do not convert case 
+*		 MOVE	 D0,D2
+*         BTST  	 #6,D0           Test input for lower case 
+*         BEQ.S   GETCH2          If upper case then skip conversion 
+*         AND.B   #%11011111,D0   Else clear bit 5 for upper case conv 
+*		 MOVE.B	 D0,D2
+*GETCH2   CMP.B   #1,ECHO(A6)     Do we need to echo the input? 
+*         BEQ.S   GETCH3          If ECHO is 1 then no echo 
+*		 CMP.B	 #2,ECHO(A6)	 Should we display chars or stars?
+*		 BNE	 CHARS
+*		 MOVE.B	 D0,D2
+*		 MOVE.B	 #'*',D0
+*CHARS    BSR.S   PUTCHAR         Else echo the input 
+*GETCH3   MOVE	 D2,D0
+*		 MOVE.L  (A7)+,A0        Restore working register 
+*         RTS                     and return 
 * 
 ************************************************************************* 
 * 
@@ -740,7 +845,15 @@ PUTCHAR  MOVE.L  A0,-(A7)        Save working register
          BSR.S   IO_OPEN         Open console (Get address of DCB) 
          BSR     IO_REQ          Perform output with DCB pointed at by A0 
          MOVE.L  (A7)+,A0        Restore working register 
-         RTS 
+         RTS
+
+*PUTCHAR  MOVE.L  A0,-(A7)        Save working register
+*		 MOVE.B	 D0,D1			 Move the contents of D0 to D1
+*		 MOVE.B	 #6,D0			 Display single ASCII character in D1.B
+*		 TRAP	 #15
+*		 MOVE.B	 D1,D0
+*         MOVE.L  (A7)+,A0        Restore working register 
+*         RTS
 * 
 ************************************************************************* 
 * 
@@ -1153,7 +1266,21 @@ REG_MD4  CMP.L   #68,D2              If this address is the SR then
          MOVE.L  D0,(A2)             Else store new data in display frame 
          RTS 
 REG_MD5  MOVE.W  D0,(A2)             Store SR (one word) 
-         RTS 
+         RTS
+
+* 
+************************************************************************* 
+*  HELP: Displays each available function with instructions for use
+*
+HElP	LEA.L	HELPPAGE,A1	 Load Starting Address of Array of HELP Strings
+HELP1	MOVE.L	(A1)+,A4	 Post increment to next HELP string label, store in A4
+		BSR		PSTRING		 Print string pointed to in A4
+		BSR		NEWLINE		 Print NewLine
+		TST.L	(A1)		 Test to see if we're at end of HELP label array
+		BEQ		ENDHELP		 If yes (then end)
+		BRA		HELP1		 No continue to print next label and HELP string
+ENDHELP RTS
+ 
 * 
 ************************************************************************* 
 * 
@@ -1166,16 +1293,19 @@ X_UN    EQU     *                 Uninitialized exception vector routine
 ************************************************************************* 
 * 
 *  All strings and other fixed parameters here 
-* 
+*
+ASKUNAME DC.B	  'Username: ',0,0
+ASKPWORD DC.B	  'Password: ',0,0
+VUNAME	 DC.B	  'GROUP1',0
+VPWORD	 DC.B	  'PASSWORD',0
+INVUN	 DC.B	  'Invalid username...',0,0
+INVPW	 DC.B	  'Invalid password...',0,0
+LOCKED	 DC.B	  'Too many failed attempts. Goodbye.',0,0
 BANNER   DC.B     'TSBUG 2 Version 23.07.86',0,0
 MODIFY	 DC.B	  'Modified by Eugene A. Rockey Jr. Jan.05.2010',0,0
 WHY      DC.B     'for use with the M68000 Minimal Computer Configuration',0,0 
 WHERE    DC.B     'University of Louisville',0,0
 ADDRE	 DC.B	  'CECS 525, www.cs.louisville.edu',0,0
-UNAME	 DC.B	  'Username: ',0
-PWORD	 DC.B	  'Password: ',0
-LFAIL	 DC.B	  'Invalid username and/or password',0
-WELCOME	 DC.B	  'Welcome back, ',0
 CRLF     DC.B     CR,LF,'TS2MON >',0 
 HEADER   DC.B     CR,LF,'S','1',0,0 
 TAIL     DC.B     'S9  ',0,0 
@@ -1199,7 +1329,30 @@ ERMES3   DC.B     'Loading error',0
 ERMES4   DC.B     'Table full  ',0,0 
 ERMES5   DC.B     'Breakpoint not active   ',0,0 
 ERMES6   DC.B     'Uninitialized exception ',0,0 
-ERMES7   DC.B     ' Range error',0 
+ERMES7   DC.B     ' Range error',0
+*HELP Command Instruction Strings
+HJUMP	 DC.B	  ' JUMP <address> causes execution to begin at <address>.',0,0
+HMEM1	 DC.B	  ' MEMORY <address> examines contents of <address>',0,0
+HMEM2	 DC.B	  ' 	and allows them to be changed.',0,0
+HLOAD1	 DC.B	  ' LOAD <string> loads S1/S2 records from the host.',0,0
+HLOAD2	 DC.B	  ' 	<string> is sent to host.',0,0
+HDUMP1	 DC.B	  ' DUMP <string> sends S1 records to the host and is',0,0
+HDUMP2	 DC.B	  ' 	preceeded by <string>',0,0
+HTRAN	 DC.B	  ' TRAN enters the transparant mode and is exited by ESC,E.',0,0
+HNOBR1	 DC.B	  ' NOBR <address> removes the breakpoint at <address> from the',0,0
+HNOBR2 	 DC.B	  ' 	BP table. If no address is given all BPs are removed.',0,0
+HDISP	 DC.B	  ' DISP displays the contents of the pseudo registers in TSK_T.',0,0
+HGO1	 DC.B	  ' GO <address> starts program execution at <address> and loads',0,0
+HGO2	 DC.B	  ' 	regs from TSK_T.',0,0
+HBRGT	 DC.B	  ' BRGT puts a breakpoint in the BP table - but not in the code.',0,0
+HPLAN	 DC.B	  ' PLAN puts the breakpoints in the code.',0,0
+HKILL	 DC.B	  ' KILL removes breakpoints from the code.',0,0
+HGB	 	 DC.B	  ' GB <address> sets breakpoints and then calls GO.',0,0
+HREG1	 DC.B	  ' REG <reg> <value> loads <value> into <reg> in TASK_T.',0,0
+HREG2	 DC.B	  ' 	Used to preset registers before a GO or GB.',0,0
+HHELP	 DC.B	  ' HELP displays the user available functions with instructions.',0,0
+*Create an array of labels(pointers) to HELP Page srings
+HELPPAGE DC.L	  HJUMP,HMEM1,HMEM2,HLOAD1,HLOAD2,HDUMP1,HDUMP2,HTRAN,HNOBR1,HNOBR2,HDISP,HGO1,HGO2,HBRGT,HPLAN,HKILL,HGB,HREG1,HREG2,HHELP,$00000000 
 * 
 *  COMTAB is the built-in command table. All entries are made up of 
 *         a string length + number of characters to match + the string 
@@ -1243,7 +1396,10 @@ COMTAB   DC.B     4,4              JUMP <address> causes execution to
          DC.L    GB-COMTAB 
          DC.B    4,3               REG <reg> <value> loads <value> 
          DC.B    'REG '            into <reg> in TASK_T. Used to preset 
-         DC.L    REG_MOD-COMTAB    registers before a GO or GB 
+         DC.L    REG_MOD-COMTAB    registers before a GO or GB
+		 DC.B	 4,4
+         DC.B	 'HELP'			   HELP displays the user available functions with instructions
+         DC.L	 HELP-COMTAB 
          DC.B    0,0 
 * 
 ************************************************************************* 
@@ -1290,4 +1446,24 @@ DCB6     DC.B    'BUFF_OUT'
 *              |---------------------| --- 
 *    18+S ->   | Pointer to next DCB | 
 * 
+*		 MOVE.B		#9,D0
+*		 TRAP		#15				Halt the simulator
          END RESET 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*~Font name~Courier New~
+*~Font size~10~
+*~Tab type~1~
+*~Tab size~4~
