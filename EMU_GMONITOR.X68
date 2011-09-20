@@ -1,6 +1,6 @@
 *        TSBUG2 - 68000 monitor - version of 05 January 2010 
 
-		 ORG      $0000				Changed from $0	
+		 ORG      $0400				Changed from $0	
          DC.L     STACK,RESET
 *                                   Symbol equates 
 BS       EQU      $08               Back_space 
@@ -14,7 +14,7 @@ CTRL_A   EQU      $01               Control_A forces return to monitor
 STACK    EQU      $4400             Stack_pointer
 ACIA_1   EQU      $8001             Console ACIA control 
 ACIA_2   EQU      ACIA_1            Auxilary ACIA control 
-X_BASE   EQU      $4000             Start of exception vector table 
+X_BASE   EQU      $0000             Start of exception vector table (modified by Luke)
 TRAP_14  EQU      $4E4E             Code for TRAP #14 
 MAXCHR   EQU      64                Length of input line buffer  
 * 
@@ -47,7 +47,7 @@ RESET:   EQU      *
          CLR.B    ECHO(A6)          Set automatic character echo 
          CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
          BSR      SETACIA           Setup ACIAs 
-	 	 BSR.L	  X_SET		    what change did i do here
+	 	 BSR.L	  X_SET		    	(initialize Exception Vector Table)
          BSR.L    SET_DCB           Setup DCB table in RAM
          BSR	  NEWLINE
          LEA.L    BANNER(PC),A4    
@@ -75,7 +75,9 @@ NO_EXT:  NOP                        Two NOPs to allow for a future
 		 
 		 CLR.L    D7                Warm entry point - clear error flag 
 		 BSR      NEWLINE           Print a newline
-		 BSR 	  LOGIN				Make sure user logs in with a valid u/p 
+		 BSR 	  LOGIN				Make sure user logs in with a valid u/p
+		 MOVE.B	  #17,D1			FIBGEN task
+		 TRAP	  #0				Branch to Trap_0 
 WARM:	 CLR.L    D7                Warm entry point - clear error flag
 	     BSR      NEWLINE           Print a newline
 		 BSR      GETLINE           Get a command line 
@@ -334,7 +336,92 @@ SRCH6    LEA.L    -4(A4),A3         Calculate address of command entry
          OR.B     #1,CCR            point. Mark carry flag as success 
          RTS                        and return 
 SRCH7    AND.B    #$FE,CCR          Fail - clear carry to indicate 
-         RTS                        command not found and return 
+         RTS                        command not found and return
+
+************************************************************************* 
+* 
+*  FIBGEN: Generates and displays the Fibonaci sequence with the sequence
+*	length specified by the user
+*
+FN2		 DS.B		1				 Variable to hold Fn-2 for Fibonacci sequence
+FN1		 DS.B		1				 Variable to hold Fn-1 for Fibonacci sequence
+COUNT    DS.B		1				 Variable to hold the users chosen sequence length
+FIBGEN	 LEA.L		FMES1(PC),A4	 Point to first of FibGen Instruction strings, store in A4
+		 BSR		PSTRING		 	 Print string pointed to in A4
+		 BSR		NEWLINE		 	 Print NewLine		 
+		 LEA.L		FMES2(PC),A4	 Point to first of FibGen Instruction strings, store in A4
+		 BSR		PSTRING		 	 Print string pointed to in A4
+		 BSR		NEWLINE		 	 Print NewLine
+		 LEA.L		FMES3(PC),A4	 Point to first of FibGen Instruction strings, store in A4
+		 BSR		PSTRING		 	 Print string pointed to in A4
+		 BSR		NEWLINE		 	 Print NewLine
+		 LEA.L		FMES4(PC),A4	 Point to first of FibGen Instruction strings, store in A4
+		 BSR		PSTRING		 	 Print string pointed to in A4
+		 BSR		NEWLINE		 	 Print NewLine
+		 
+FIBLOOP  BSR		NEWLINE			 Print NewLine
+		 LEA.L		FMES5(PC),A4	 Point to first of FibGen Instruction strings, store in A4
+		 BSR		PSTRING		 	 Print string pointed to in A4
+
+		 BSR      	GETCHAR          Get a character from input device 
+         SUB.B    	#$30,D0          Convert to binary 
+
+		 CMP		#0,D0			 if user chose "0" exit and end
+		 BEQ		FIBEND
+		 BSR		NEWLINE			 Print newline
+		
+		 CMP		#7,D0			 if (0 < D0 <= 9) then
+		 BGT		BADINPUT		 continue, else branch if input is bad
+		 CMP		#0,D0
+		 BLT		BADINPUT
+		 
+		 MOVE.B		#0,FN2			intialize fibonacci counters
+		 MOVE.B		#1,FN1			Fn-2 = 0, Fn-1 = 1
+		 MOVE.B		D0,COUNT		COUNT = D0 (the users choice of lines)
+		 MOVE.B		#'0',D0			print the first character of the sequence
+		 BSR		PUTCHAR
+				
+		 CMP.B		#2,COUNT		if COUNT < 2 then COUNT = 1
+		 BLT		FIBLOOP         we're done so ask for input again
+ 
+		 MOVE.B		#' ',D0         print the second character of the sequence
+		 BSR		PUTCHAR         and a space
+		 MOVE.B		#'1',D0
+		 BSR		PUTCHAR
+		 
+		 CMP.B		#2,COUNT		
+		 BEQ		FIBLOOP
+							
+		 SUBI.B		#2,COUNT		subtract 3 from the count the user gave to make up for the first three numbers in the sequence
+		 MOVE.B		COUNT,D3		*which display by default
+FIBFOR	 CMP		#0,D3
+		 BEQ		FIBLOOP
+		 SUBI.B		#1,D3
+		 
+		 MOVE.B		#' ',D0			display a blank space between number
+    	 BSR		PUTCHAR			using PUTCHAR
+		 
+		 CLR		D0				Clear D0
+    	 ADD.B		FN2,D0			add FN2 to FN1
+    	 ADD.B		FN1,D0			store this sum in D0 to display
+    	 ADD.B   	#$30,D0			Max number an ASCII character
+    	 BSR		PUTCHAR			Display character
+    	 SUB.B		#$30,D0			convert ASCII back to value
+    			 	
+    	 MOVE.B		FN1,FN2			FN2= previous FN1
+    	 MOVE.B		D0,FN1			FN1= prevous fibonacci number
+		
+ 		 BRA		FIBFOR
+ 		 
+ 		 BSR		NEWLINE
+ 		 
+BADINPUT LEA.L		FMES6(PC),A4	 Move pointer to bad input error message
+		 BSR		PSTRING		 	 Print string pointed to in A4
+		 BSR		NEWLINE		 	 Print NewLine
+		
+		 BRA	FIBLOOP
+FIBEND	 RTS
+ 
 * 
 ************************************************************************* 
 * 
@@ -898,7 +985,20 @@ OPEN4    MOVEM.L  (A7)+,A1-A3/D0-D4 Restore working registers
 *  Exception vector table initialization routine 
 *  All vectors not setup are loaded with uninitialized routine vector 
 * 
-X_SET   MOVE.W  #7,D0             Now clear the breakpoint table 
+X_SET   LEA.L	X_BASE,A0		  Point to base of exception table
+		MOVE.W	#253,D0			  Number of vectors - 3
+X_SET1	MOVE.L	#X_UN,(A0)+		  Store unitialized exception vector
+		DBRA	D0,X_SET1		  Repeat until all entries preset
+		SUB.L	A0,A0			  Clear A0 (now points to base of exception table again)
+		MOVE.L	#BUS_ER,8(A0)	  Setup bus error vector
+		MOVE.L	#ADD_ER,12(A0)	  Setup address error vector
+		MOVE.L	#IL_ER,16(A0)	  Setup illegal instruction error vector
+		MOVE.L	#DIV0_ER,20(A0)	  Setup divide by zero error vector
+		MOVE.L	#PRV_ER,32(A0)	  Setup privilege violation error vector
+		MOVE.L  #TRAP_0,128(A0)   Setup TRAP #0 exception vector 
+        MOVE.L  #BRKPT,184(A0)    Setup TRAP #14 vector = breakpoint 
+        MOVE.L  #WARM,188(A0)     Setup TRAP #15 exception vector 
+		MOVE.W  #7,D0             Now clear the breakpoint table 
         LEA.L   BP_TAB(A6),A0     Point to table 
 X_SET2  CLR.L   (A0)+             Clear an address entry 
         CLR.W   (A0)+             Clear the corresponding data 
@@ -909,74 +1009,77 @@ X_SET2  CLR.L   (A0)+             Clear an address entry
 * 
 TRAP_0  EQU     *                 User links to  TS2BUG via TRAP #0 
         CMP.B   #0,D1             D1 = 0 = Get character 
-        BNE.S   TRAP1           
+        BNE.S   TASK1           
         BSR     GETCHAR 
         RTE 
-TRAP1   CMP.B   #1,D1             D1 = 1 = Print character 
-        BNE.S   TRAP2 
+TASK1   CMP.B   #1,D1             D1 = 1 = Print character 
+        BNE.S   TASK2 
         BSR     PUTCHAR 
         RTE 
-TRAP2   CMP.B   #2,D1             D1 = 2 = Newline 
-        BNE.S   TRAP3 
+TASK2   CMP.B   #2,D1             D1 = 2 = Newline 
+        BNE.S   TASK3 
         BSR     NEWLINE 
         RTE 
-TRAP3   CMP.B   #3,D1             D1 = 3 = Get parameter from buffer 
-        BNE.S   TRAP4 
+TASK3   CMP.B   #3,D1             D1 = 3 = Get parameter from buffer 
+        BNE.S   TASK4 
         BSR     PARAM 
         RTE 
-TRAP4   CMP.B   #4,D1             D1 = 4 = Print string pointed at by A4 
-        BNE.S   TRAP5 
+TASK4   CMP.B   #4,D1             D1 = 4 = Print string pointed at by A4 
+        BNE.S   TASK5 
         BSR     PSTRING 
         RTE 
-TRAP5   CMP.B   #5,D1             D1 = 5 = Get a hex character 
-        BNE.S   TRAP6 
+TASK5   CMP.B   #5,D1             D1 = 5 = Get a hex character 
+        BNE.S   TASK6 
         BSR     HEX 
         RTE 
-TRAP6   CMP.B   #6,D1             D1 = 6 = Get a hex byte 
-        BNE.S   TRAP7 
+TASK6   CMP.B   #6,D1             D1 = 6 = Get a hex byte 
+        BNE.S   TASK7 
         BSR     BYTE 
         RTE 
-TRAP7   CMP.B   #7,D1             D1 = 7 = Get a word 
-        BNE.S   TRAP8 
+TASK7   CMP.B   #7,D1             D1 = 7 = Get a word 
+        BNE.S   TASK8 
         BSR     WORD 
         RTE 
-TRAP8   CMP.B   #8,D1             D1 = 8 = Get a longword 
-        BNE.S   TRAP9 
+TASK8   CMP.B   #8,D1             D1 = 8 = Get a longword 
+        BNE.S   TASK9 
         BSR     LONGWD 
         RTE 
-TRAP9   CMP.B   #9,D1             D1 = 9 = Output hex byte 
-        BNE.S   TRAP10  
+TASK9   CMP.B   #9,D1             D1 = 9 = Output hex byte 
+        BNE.S   TASK10  
         BSR     OUT2X 
         RTE 
-TRAP10  CMP.B   #10,D1            D1 = 10 = Output hex word 
-        BNE.S   TRAP11 
+TASK10  CMP.B   #10,D1            D1 = 10 = Output hex word 
+        BNE.S   TASK11 
         BSR     OUT4X 
         RTE 
-TRAP11  CMP.B   #11,D1            D1 = 11 = Output hex longword 
-        BNE.S   TRAP12 
+TASK11  CMP.B   #11,D1            D1 = 11 = Output hex longword 
+        BNE.S   TASK12 
         BSR     OUT8X 
         RTE 
-TRAP12  CMP.B   #12,D1            D1 = 12 = Print a space 
-        BNE.S   TRAP13 
+TASK12  CMP.B   #12,D1            D1 = 12 = Print a space 
+        BNE.S   TASK13 
         BSR     PSPACE 
         RTE 
-TRAP13  CMP.B   #13,D1            D1 = 13 = Get a line of text into 
-        BNE.S   TRAP14            the line buffer 
+TASK13  CMP.B   #13,D1            D1 = 13 = Get a line of text into 
+        BNE.S   TASK14            the line buffer 
         BSR     GETLINE 
         RTE 
-TRAP14  CMP.B   #14,D1            D1 = 14 = Tidy up the line in the 
-        BNE.S   TRAP15            line buffer by removing leading 
+TASK14  CMP.B   #14,D1            D1 = 14 = Tidy up the line in the 
+        BNE.S   TASK15            line buffer by removing leading 
         BSR     TIDY              leading and multiple embeded spaces 
         RTE 
-TRAP15  CMP.B   #15,D1            D1 = 15 = Execute the command in 
-        BNE.S   TRAP16            the line buffer 
+TASK15  CMP.B   #15,D1            D1 = 15 = Execute the command in 
+        BNE.S   TASK16            the line buffer 
         BSR     EXECUTE 
         RTE 
-TRAP16  CMP.B   #16,D1            D1 = 16 = Call RESTORE to transfer 
-        BNE.S   TRAP17            the registers in TSK_T to the 68000 
+TASK16  CMP.B   #16,D1            D1 = 16 = Call RESTORE to transfer 
+        BNE.S   TASK17            the registers in TSK_T to the 68000 
         BSR     RESTORE           and therefore execute a program 
-        RTE 
-TRAP17  RTE 
+        RTE
+TASK17	CMP.B 	#17,D1			  D1 = 17 = Call Fibinacci Sequence Generator
+		BNE.S	TASK18
+		BSR		FIBGEN			  
+TASK18  RTE 
 * 
 ************************************************************************* 
 * 
@@ -1029,7 +1132,7 @@ IL_ER   EQU      *                Illegal instruction exception
         LEA.L   MES10(PC),A4      Point to heading 
         BSR     HEADING           Print it 
         MOVE.L  (A7)+,A4          Restore A4 
-        BSR.S   GROUP2            Save registers in display frame 
+        BSR   	GROUP2            Save registers in display frame 
         BSR     EX_DIS            Display registers saved in frame 
         BRA     WARM              Abort from illegal instruction 
 * 
@@ -1045,8 +1148,24 @@ ADD_ER  EQU     *                 Address error (group 1) exception
         LEA.L   MES9(PC),A4       Point to heading 
         BSR     HEADING           Print it 
         MOVE.L  (A7)+,A4          Restore A4 
-        BRA.S   GROUP1            Deal with group 1 exception 
-* 
+        BRA.S   GROUP1            Deal with group 1 exception
+*
+* Added Exception Handling Routines for Lab2
+*
+PRV_ER	EQU		*				  Privilege Violation Error (group 1) exception
+		MOVE.L	A4,-(A7)		  Save A4
+		LEA.L	MES13(PC),A4	  Point to error message string		
+ 		BSR		HEADING			  Pring the error message as a heading
+ 		MOVE.L	(A7)+,A4		  Restore A4
+ 		BRA		GROUP1			  Deal with group 2 exception
+*
+DIV0_ER EQU		*				  Divide by zero error (group 2) exception
+		MOVE.L	A4,-(A7)		  Save A4
+		LEA.L	MES14(PC),A4	  Point to error message string		
+ 		BSR		HEADING			  Pring the error message as a heading
+ 		MOVE.L	(A7)+,A4		  Restore A4
+ 		BRA		GROUP2			  Deal with group 2 exception
+* 		
 BRKPT   EQU     *                   Deal with breakpoint 
         MOVEM.L D0-D7/A0-A6,-(A7)   Save all registers 
         BSR     BR_CLR              Clear breakpoints in code 
@@ -1055,7 +1174,9 @@ BRKPT   EQU     *                   Deal with breakpoint
         LEA.L   MES11(PC),A4      Point to heading 
         BSR     HEADING           Print it 
         BSR     EX_DIS            Display saved registers 
-        BRA     WARM              Return to monitor 
+        BRA     WARM              Return to monitor
+*
+ 
 * 
 *       GROUP1 is called by address and bus error exceptions 
 *       These are "turned into group 2" exceptions (eg TRAP) 
@@ -1311,7 +1432,9 @@ MES8     DC.B     'Bus error   ',0,0
 MES9     DC.B     'Address error   ',0,0 
 MES10    DC.B     'Illegal instruction ',0,0 
 MES11    DC.B     'Breakpoint  ',0,0 
-MES12    DC.B     'Trace   ',0 
+MES12    DC.B     'Trace   ',0
+MES13	 DC.B	  'Privilege Violation error  ',0,0
+MES14	 DC.B	  'Divide by zero error  ',0,0   
 REGNAME  DC.B     'D0D1D2D3D4D5D6D7' 
          DC.B     'A0A1A2A3A4A5A6A7' 
          DC.B     'SSSR' 
@@ -1346,11 +1469,20 @@ HREG2	 DC.B	  ' 	Used to preset registers before a GO or GB.',0,0
 HHELP	 DC.B	  ' HELP displays the user available functions with instructions.',0,0
 *Create an array of labels(pointers) to HELP Page srings
 HELPPAGE DC.L	  HJUMP,HMEM1,HMEM2,HLOAD1,HLOAD2,HDUMP1,HDUMP2,HTRAN,HNOBR1,HNOBR2,HDISP,HGO1,HGO2,HBRGT,HPLAN,HKILL,HGB,HREG1,HREG2,HHELP,$00000000 
+*FibGen Instructions and strings
+FMES1	 DC.B	  '----- Fibonacci Sequence Generator -----',0,0
+FMES2	 DC.B	  ' Enter the Length of the sequence to display',0,0
+FMES3	 DC.B	  ' Enter a number between 1 and 7',0,0
+FMES4	 DC.B	  ' Enter a 0 to quit the game',0,0
+FMES5	 DC.B	  ' Enter the length of the sequence: ',0,0
+FMES6	 DC.B	  ' Invalid Input, please try again.',0,0
+
 *
 *  COMTAB is the built-in command table. All entries are made up of 
 *         a string length + number of characters to match + the string 
 *         plus the address of the command relative to COMTAB 
-* 
+*
+		 ORG	  $3000 
 COMTAB   DC.B     4,4              JUMP <address> causes execution to 
          DC.B     'JUMP'           begin at <address> 
          DC.L     JUMP-COMTAB                                           
@@ -1442,6 +1574,7 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
 
 
 
