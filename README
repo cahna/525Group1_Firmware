@@ -1,0 +1,38 @@
+*
+* University of Louisville
+* Speed School of Engineering
+* CECS 525 Group 1
+* - Adrian Fletcher
+* - Conor Heine
+* - Nick Searcy
+* - Luke Spicer
+*
+
+Project 2:
+To-do:
+ - Vector Table
+ - Trap 0
+ - Fix even memory address issue with COMTAB
+ - Fix echo * character after hitting enter
+Done:
+ - Firmware works with emulator
+ - Login screen w/ password
+ - Thermistor functionality
+ - HELP Command
+
+*
+* Documentation
+* 
+* Registers:
+*	* - Indicates that register value is restored before return
+*
+
+
+GETCHAR - Gets a character input by the user
+
+	Registers Used: A0, A6, A7*, D0, D7
+
+	ECHO Variable:
+		0 - Echo character
+		1 - Do not echo character
+		2 - Echo *
