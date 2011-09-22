@@ -221,7 +221,7 @@ VALID8 	EQU		*
 		MOVE.L	#1,D0			Set D0 to true to start
 VLOOP	CMP.B	#0,(A4)			Check to see if character in string is null
 		BNE		NOTNULL			If its not null, continue
-		CMP.B	#$0D,(A1)			Check to see if the user input is newline
+		CMP.B	#$0D,(A1)		Check to see if the user input is newline
 		BEQ		DONE			If it is, then we are done, return true...
 		MOVE.L	#0,D0			If str1[char] is null, and str2[char] is not new line, return false
 		BRA		DONE
