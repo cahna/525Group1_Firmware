@@ -221,8 +221,10 @@ VALID8 	EQU		*
 		MOVE.L	#1,D0			Set D0 to true to start
 VLOOP	CMP.B	#0,(A4)			Check to see if character in string is null
 		BNE		NOTNULL			If its not null, continue
-		CMP.B	#0,(A1)			Check to see if the user input is newline
-		BRA		DONE			If it is, then we are done, return true...
+		CMP.B	#$0D,(A1)		Check to see if the user input is newline
+		BEQ		DONE			If it is, then we are done, return true...
+		MOVE.L	#0,D0			If str1[char] is null, and str2[char] is not new line, return false
+		BRA		DONE
 NOTNULL	CMP.B	(A1)+,(A4)+		Compare the characters and postincrement
 		BNE		SETF			If they're not equal, set false flag
 		BRA		VLOOP			Loop
@@ -914,17 +916,24 @@ GETCHAR  MOVE.L  A0,-(A7)        Save working register
          BNE.S   GETCH3          If error then exit now 
          BSR     IO_REQ          Else execute I/O transaction 
          AND.B   #$7F,D0         Strip msb of input 
+         MOVE	 D0,D2
          TST.B   U_CASE(A6)      Test for upper -> lower case conversion 
          BNE.S   GETCH2          If flag not zero do not convert case 
+		 MOVE	 D0,D2
          BTST  	 #6,D0           Test input for lower case 
          BEQ.S   GETCH2          If upper case then skip conversion 
          AND.B   #%11011111,D0   Else clear bit 5 for upper case conv 
-GETCH2   TST.B   ECHO(A6)        Do we need to echo the input? 
-         BNE.S   GETCH3          If ECHO not zero then no echo 
-		  CMP	  #2,ECHO(A6)	  So now, do we echo chars, or stars?
-         BSR.S   PUTCHAR         Else echo the input 
-GETCH3   MOVE.L  (A7)+,A0        Restore working register 
-         RTS                     and return 
+		 MOVE.B	 D0,D2
+GETCH2   CMP.B   #1,ECHO(A6)     Do we need to echo the input? 
+         BEQ.S   GETCH3          If ECHO is 1 then no echo 
+		 CMP.B	 #2,ECHO(A6)	 Should we display chars or stars?
+		 BNE	 CHARS
+		 MOVE.B	 D0,D2
+		 MOVE.B	 #'*',D0
+CHARS    BSR.S   PUTCHAR         Else echo the input 
+GETCH3   MOVE	 D2,D0
+		 MOVE.L  (A7)+,A0        Restore working register 
+         RTS                     and return
 
 *GETCHAR	 MOVE.L	 A0,-(A7)		 Save working register
 *		 MOVE.B	 #5,D0			 Read single ASCII character into D1.B
@@ -970,6 +979,7 @@ PUTCHAR  MOVE.L  A0,-(A7)        Save working register
 *         MOVE.L  (A7)+,A0        Restore working register 
 *         RTS
 * 
+
 ************************************************************************* 
 * 
 *  BUFF_IN and BUFF_OUT are two rudimentary input and output routines 
@@ -1611,6 +1621,8 @@ DCB6     DC.B    'BUFF_OUT'
 *		 MOVE.B		#9,D0
 *		 TRAP		#15				Halt the simulator
          END RESET 
+
+
 
 
 

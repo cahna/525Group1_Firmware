@@ -916,17 +916,24 @@ AUX_OT1  BTST.B  #1,(A1)         Test for ready to transmit
 *         BNE.S   GETCH3          If error then exit now 
 *         BSR     IO_REQ          Else execute I/O transaction 
 *         AND.B   #$7F,D0         Strip msb of input 
+*         MOVE	 D0,D2
 *         TST.B   U_CASE(A6)      Test for upper -> lower case conversion 
 *         BNE.S   GETCH2          If flag not zero do not convert case 
+*		 MOVE	 D0,D2
 *         BTST  	 #6,D0           Test input for lower case 
 *         BEQ.S   GETCH2          If upper case then skip conversion 
 *         AND.B   #%11011111,D0   Else clear bit 5 for upper case conv 
-*GETCH2   TST.B   ECHO(A6)        Do we need to echo the input? 
-*         BNE.S   GETCH3          If ECHO not zero then no echo 
-*		  CMP	  #2,ECHO(A6)	  So now, do we echo chars, or stars?
-*         BSR.S   PUTCHAR         Else echo the input 
-*GETCH3   MOVE.L  (A7)+,A0        Restore working register 
-*         RTS                     and return 
+*		 MOVE.B	 D0,D2
+*GETCH2   CMP.B   #1,ECHO(A6)     Do we need to echo the input? 
+*         BEQ.S   GETCH3          If ECHO is 1 then no echo 
+*		 CMP.B	 #2,ECHO(A6)	 Should we display chars or stars?
+*		 BNE	 CHARS
+*		 MOVE.B	 D0,D2
+*		 MOVE.B	 #'*',D0
+*CHARS    BSR.S   PUTCHAR         Else echo the input 
+*GETCH3   MOVE	 D2,D0
+*		 MOVE.L  (A7)+,A0        Restore working register 
+*         RTS                     and return
 
 GETCHAR	 MOVE.L	 A0,-(A7)		 Save working register
 		 MOVE.B	 #5,D0			 Read single ASCII character into D1.B
@@ -1613,6 +1620,7 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
 
 
 

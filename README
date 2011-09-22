@@ -10,8 +10,8 @@
 
 Project 2:
 To-do:
- - Vector Table (Test on hardware)
  - Trap 0 - Write a program that calls Trap0 and uses our function
+ - Demonstrate all exceptions
 Done:
  - Fibonacci task added to Trap_0
  - COMTAB issue fixed with ORG statement at #$3000
@@ -19,6 +19,7 @@ Done:
  - Login screen w/ password
  - Thermistor functionality
  - HELP Command
+ - Vector Table (Test on hardware)
 
 *
 * Documentation
@@ -26,6 +27,21 @@ Done:
 * Registers:
 *	* - Indicates that register value is restored before return
 *
+
+DO ALL WORK ON THE EMULATOR VERSION AND COMMENT OUT THE HARDWARE CODE
+UNTIL YOU ARE READY TO SAVE THE HARDWARE FILE.
+
+	To convert between EMULATOR and HARDWARE versions:
+	
+	1. Make sure you apply changes to emulator version to any
+	   previously commented out hardware code
+
+	2. Comment out your emulator code (EMU code should be directly
+	   below hardware code.
+
+	3. Uncomment any remaining hardware code above EMU code
+
+	4. Save file using hardware naming convention
 
 
 GETCHAR - Gets a character input by the user
