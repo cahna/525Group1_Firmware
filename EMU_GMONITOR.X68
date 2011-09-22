@@ -1,7 +1,40 @@
 *        TSBUG2 - 68000 monitor - version of 05 January 2010 
 
-		 ORG      $0400				Changed from $0	
+		 ORG      $0000					
          DC.L     STACK,RESET
+         DC.L	  BUS_ER,ADD_ER,IL_ER,DIV0_ER,X_UN,X_UN,PRV_ER,X_UN	*$0008 through $0027
+         DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0028 through $0047
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0048 through $0067
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,TRAP_0,X_UN		*$0068 through $0087
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0088 through $00A7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,BRKPT,WARM,X_UN,X_UN		*$00A8 through $00C7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$00C8 through $00E7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$00E8 through $0107
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0108 through $0127
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0128 through $0147
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0148 through $0167
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0168 through $0187
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0188 through $01A7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$01A8 through $01C7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$01C8 through $01E7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$01E8 through $0207
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0208 through $0227
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0228 through $0247
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0248 through $0267
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0268 through $0287
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0288 through $02A7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$02A8 through $02C7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$02C8 through $02E7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$02E8 through $0307
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0308 through $0327
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0328 through $0347
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0348 through $0367
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0368 through $0387
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0388 through $03A7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$03A8 through $03C7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$03C8 through $03E7
+		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN					*$03E8 through $03FF
+ 
 *                                   Symbol equates 
 BS       EQU      $08               Back_space 
 CR       EQU      $0D               Carriage_return 
@@ -14,10 +47,11 @@ CTRL_A   EQU      $01               Control_A forces return to monitor
 STACK    EQU      $4400             Stack_pointer
 ACIA_1   EQU      $8001             Console ACIA control 
 ACIA_2   EQU      ACIA_1            Auxilary ACIA control 
-X_BASE   EQU      $0000             Start of exception vector table (modified by Luke)
+X_BASE   EQU      $4000             Start of exception vector table 
 TRAP_14  EQU      $4E4E             Code for TRAP #14 
 MAXCHR   EQU      64                Length of input line buffer  
 * 
+ 
 DATA     EQU      $4800             Data origin 
 LNBUFF   DS.B     MAXCHR            Input line buffer
 BUFFEND  EQU      LNBUFF+MAXCHR-1   End of line buffer 
@@ -47,7 +81,7 @@ RESET:   EQU      *
          CLR.B    ECHO(A6)          Set automatic character echo 
          CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
          BSR      SETACIA           Setup ACIAs 
-	 	 BSR.L	  X_SET		    	(initialize Exception Vector Table)
+	 	 *BSR.L	  X_SET		    	(initialize Exception Vector Table)
          BSR.L    SET_DCB           Setup DCB table in RAM
          BSR	  NEWLINE
          LEA.L    BANNER(PC),A4    
@@ -76,8 +110,7 @@ NO_EXT:  NOP                        Two NOPs to allow for a future
 		 CLR.L    D7                Warm entry point - clear error flag 
 		 BSR      NEWLINE           Print a newline
 		 BSR 	  LOGIN				Make sure user logs in with a valid u/p
-		 MOVE.B	  #17,D1			FIBGEN task
-		 TRAP	  #0				Branch to Trap_0 
+ 
 WARM:	 CLR.L    D7                Warm entry point - clear error flag
 	     BSR      NEWLINE           Print a newline
 		 BSR      GETLINE           Get a command line 
@@ -341,7 +374,7 @@ SRCH7    AND.B    #$FE,CCR          Fail - clear carry to indicate
 ************************************************************************* 
 * 
 *  FIBGEN: Generates and displays the Fibonaci sequence with the sequence
-*	length specified by the user
+*  length specified by the user, this function is fun as task #17 of Trap 0
 *
 FN2		 DS.B		1				 Variable to hold Fn-2 for Fibonacci sequence
 FN1		 DS.B		1				 Variable to hold Fn-1 for Fibonacci sequence
@@ -349,18 +382,18 @@ COUNT    DS.B		1				 Variable to hold the users chosen sequence length
 FIBGEN	 LEA.L		FMES1(PC),A4	 Point to first of FibGen Instruction strings, store in A4
 		 BSR		PSTRING		 	 Print string pointed to in A4
 		 BSR		NEWLINE		 	 Print NewLine		 
-		 LEA.L		FMES2(PC),A4	 Point to first of FibGen Instruction strings, store in A4
+		 LEA.L		FMES2(PC),A4	 Point to second of FibGen Instruction strings, store in A4
 		 BSR		PSTRING		 	 Print string pointed to in A4
 		 BSR		NEWLINE		 	 Print NewLine
-		 LEA.L		FMES3(PC),A4	 Point to first of FibGen Instruction strings, store in A4
+		 LEA.L		FMES3(PC),A4	 Point to third of FibGen Instruction strings, store in A4
 		 BSR		PSTRING		 	 Print string pointed to in A4
 		 BSR		NEWLINE		 	 Print NewLine
-		 LEA.L		FMES4(PC),A4	 Point to first of FibGen Instruction strings, store in A4
+		 LEA.L		FMES4(PC),A4	 Point to fourth of FibGen Instruction strings, store in A4
 		 BSR		PSTRING		 	 Print string pointed to in A4
 		 BSR		NEWLINE		 	 Print NewLine
 		 
 FIBLOOP  BSR		NEWLINE			 Print NewLine
-		 LEA.L		FMES5(PC),A4	 Point to first of FibGen Instruction strings, store in A4
+		 LEA.L		FMES5(PC),A4	 Point to user input prompt string, store in A4
 		 BSR		PSTRING		 	 Print string pointed to in A4
 
 		 BSR      	GETCHAR          Get a character from input device 
@@ -370,10 +403,10 @@ FIBLOOP  BSR		NEWLINE			 Print NewLine
 		 BEQ		FIBEND
 		 BSR		NEWLINE			 Print newline
 		
-		 CMP		#7,D0			 if (0 < D0 <= 9) then
-		 BGT		BADINPUT		 continue, else branch if input is bad
-		 CMP		#0,D0
-		 BLT		BADINPUT
+		 CMP		#7,D0			 Compare the user input (in DO)
+		 BGT		BADINPUT		 to 7, if greather than, they gave bad input
+		 CMP		#0,D0			 Compare the user input (in D0)
+		 BLT		BADINPUT		 to 0, if less than, they gave bad input
 		 
 		 MOVE.B		#0,FN2			intialize fibonacci counters
 		 MOVE.B		#1,FN1			Fn-2 = 0, Fn-1 = 1
@@ -389,14 +422,15 @@ FIBLOOP  BSR		NEWLINE			 Print NewLine
 		 MOVE.B		#'1',D0
 		 BSR		PUTCHAR
 		 
-		 CMP.B		#2,COUNT		
+		 CMP.B		#2,COUNT		If count == 2, we're done so ask for input a again
 		 BEQ		FIBLOOP
 							
-		 SUBI.B		#2,COUNT		subtract 3 from the count the user gave to make up for the first three numbers in the sequence
-		 MOVE.B		COUNT,D3		*which display by default
-FIBFOR	 CMP		#0,D3
-		 BEQ		FIBLOOP
-		 SUBI.B		#1,D3
+		 SUBI.B		#2,COUNT		subtract 2 from the count the user gave us
+		 							*to make up for the first 2 numbers in the sequence already being printed
+		 MOVE.B		COUNT,D3		Move the COUNT variable's value into D3 to use it as a loop counter
+FIBFOR	 CMP		#0,D3			If D3 == 0, then we've printed the entire seqence
+		 BEQ		FIBLOOP			So ask for input from the user again
+		 SUBI.B		#1,D3			If D3 != 0, then decrement D3 and print next value in sequence
 		 
 		 MOVE.B		#' ',D0			display a blank space between number
     	 BSR		PUTCHAR			using PUTCHAR
@@ -411,16 +445,17 @@ FIBFOR	 CMP		#0,D3
     	 MOVE.B		FN1,FN2			FN2= previous FN1
     	 MOVE.B		D0,FN1			FN1= prevous fibonacci number
 		
- 		 BRA		FIBFOR
+ 		 BRA		FIBFOR			Branch always to the start of the For loop
  		 
- 		 BSR		NEWLINE
+ 		 BSR		NEWLINE			Print newline
  		 
-BADINPUT LEA.L		FMES6(PC),A4	 Move pointer to bad input error message
-		 BSR		PSTRING		 	 Print string pointed to in A4
-		 BSR		NEWLINE		 	 Print NewLine
+BADINPUT LEA.L		FMES6(PC),A4	Move pointer to bad input error message
+		 BSR		PSTRING		 	Print string pointed to in A4
+		 BSR		NEWLINE		 	Print NewLine
 		
-		 BRA	FIBLOOP
-FIBEND	 RTS
+		 BRA		FIBLOOP			User entered bad data so ask for input again
+FIBEND	 BSR		NEWLINE			Print newline
+		 RTS
  
 * 
 ************************************************************************* 
@@ -985,25 +1020,25 @@ OPEN4    MOVEM.L  (A7)+,A1-A3/D0-D4 Restore working registers
 *  Exception vector table initialization routine 
 *  All vectors not setup are loaded with uninitialized routine vector 
 * 
-X_SET   LEA.L	X_BASE,A0		  Point to base of exception table
-		MOVE.W	#253,D0			  Number of vectors - 3
-X_SET1	MOVE.L	#X_UN,(A0)+		  Store unitialized exception vector
-		DBRA	D0,X_SET1		  Repeat until all entries preset
-		SUB.L	A0,A0			  Clear A0 (now points to base of exception table again)
-		MOVE.L	#BUS_ER,8(A0)	  Setup bus error vector
-		MOVE.L	#ADD_ER,12(A0)	  Setup address error vector
-		MOVE.L	#IL_ER,16(A0)	  Setup illegal instruction error vector
-		MOVE.L	#DIV0_ER,20(A0)	  Setup divide by zero error vector
-		MOVE.L	#PRV_ER,32(A0)	  Setup privilege violation error vector
-		MOVE.L  #TRAP_0,128(A0)   Setup TRAP #0 exception vector 
-        MOVE.L  #BRKPT,184(A0)    Setup TRAP #14 vector = breakpoint 
-        MOVE.L  #WARM,188(A0)     Setup TRAP #15 exception vector 
-		MOVE.W  #7,D0             Now clear the breakpoint table 
-        LEA.L   BP_TAB(A6),A0     Point to table 
-X_SET2  CLR.L   (A0)+             Clear an address entry 
-        CLR.W   (A0)+             Clear the corresponding data 
-        DBRA    D0,X_SET2         Repeat until all 8 cleared 
-        RTS 
+*X_SET   LEA.L	X_BASE,A0		  Point to base of exception table
+*		MOVE.W	#253,D0			  Number of vectors - 3
+*X_SET1	MOVE.L	#X_UN,(A0)+		  Store unitialized exception vector
+*		DBRA	D0,X_SET1		  Repeat until all entries preset
+*		SUB.L	A0,A0		  	  Clear A0 (now points to base of exception table again)
+*		MOVE.L	#BUS_ER,8(A0)	  Setup bus error vector
+*		MOVE.L	#ADD_ER,12(A0)	  Setup address error vector
+*		MOVE.L	#IL_ER,16(A0)	  Setup illegal instruction error vector
+*		MOVE.L	#DIV0_ER,20(A0)	  Setup divide by zero error vector
+*		MOVE.L	#PRV_ER,32(A0)	  Setup privilege violation error vector
+*		MOVE.L  #TRAP_0,128(A0)   Setup TRAP #0 exception vector 
+*        MOVE.L  #BRKPT,184(A0)    Setup TRAP #14 vector = breakpoint 
+*        MOVE.L  #WARM,188(A0)     Setup TRAP #15 exception vector 
+*		MOVE.W  #7,D0             Now clear the breakpoint table 
+*        LEA.L   BP_TAB(A6),A0     Point to table 
+*X_SET2  CLR.L   (A0)+             Clear an address entry 
+*        CLR.W   (A0)+             Clear the corresponding data 
+*        DBRA    D0,X_SET2         Repeat until all 8 cleared 
+*        RTS 
 * 
 ************************************************************************* 
 * 
@@ -1160,11 +1195,13 @@ PRV_ER	EQU		*				  Privilege Violation Error (group 1) exception
  		BRA		GROUP1			  Deal with group 2 exception
 *
 DIV0_ER EQU		*				  Divide by zero error (group 2) exception
+		BSR.S	GROUP2			  Treat as group 2 exception
 		MOVE.L	A4,-(A7)		  Save A4
 		LEA.L	MES14(PC),A4	  Point to error message string		
  		BSR		HEADING			  Pring the error message as a heading
  		MOVE.L	(A7)+,A4		  Restore A4
- 		BRA		GROUP2			  Deal with group 2 exception
+ 		BSR		EX_DIS			  Display saved registers
+ 		BRA		WARM			  Return to monitor
 * 		
 BRKPT   EQU     *                   Deal with breakpoint 
         MOVEM.L D0-D7/A0-A6,-(A7)   Save all registers 
@@ -1574,6 +1611,12 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
+
+
+
+
+
 
 
 
