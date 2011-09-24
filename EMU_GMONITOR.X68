@@ -1,40 +1,15 @@
-*        TSBUG2 - 68000 monitor - version of 05 January 2010 
-
+*        TSBUG2 - 68000 monitor - version of 05 January 2010 t
 		 ORG      $0000					
          DC.L     STACK,RESET
-         DC.L	  BUS_ER,ADD_ER,IL_ER,DIV0_ER,X_UN,X_UN,PRV_ER,X_UN	*$0008 through $0027
-         DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0028 through $0047
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0048 through $0067
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,TRAP_0,X_UN		*$0068 through $0087
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0088 through $00A7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,BRKPT,WARM,X_UN,X_UN		*$00A8 through $00C7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$00C8 through $00E7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$00E8 through $0107
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0108 through $0127
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0128 through $0147
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0148 through $0167
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0168 through $0187
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0188 through $01A7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$01A8 through $01C7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$01C8 through $01E7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$01E8 through $0207
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0208 through $0227
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0228 through $0247
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0248 through $0267
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0268 through $0287
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0288 through $02A7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$02A8 through $02C7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$02C8 through $02E7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$02E8 through $0307
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0308 through $0327
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0328 through $0347
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0348 through $0367
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0368 through $0387
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$0388 through $03A7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$03A8 through $03C7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN		*$03C8 through $03E7
-		 DC.L	  X_UN,X_UN,X_UN,X_UN,X_UN,X_UN					*$03E8 through $03FF
- 
+         DC.L	  BUS_ER,ADD_ER,IL_ER,DIV0_ER *,X_UN,X_UN,PRV_ER,X_UN	*$0008 through $0027
+         ORG	  $0020
+         DC.L	  PRV_ER
+         ORG	  $0080
+         DC.L	  TRAP_0
+         ORG	  $00B8
+		 DC.L	  BRKPT,WARM
+		 
+ 		 *ORG	  $0400
 *                                   Symbol equates 
 BS       EQU      $08               Back_space 
 CR       EQU      $0D               Carriage_return 
@@ -65,7 +40,11 @@ CN_OVEC  DS.L     1                 Pointer to console output DCB
 TSK_T    DS.W     37                Frame for D0-D7, A0-A6, USP, SSP, SW, PC 
 BP_TAB   DS.W     24                Breakpoint table 
 FIRST    DS.B     512               DCB area 
-BUFFER   DS.B     256               256 bytes for I/O buffer 
+BUFFER   DS.B     256               256 bytes for I/O buffer
+
+FN2		 DS.B		1				 Variable to hold Fn-2 for Fibonacci sequence
+FN1		 DS.B		1				 Variable to hold Fn-1 for Fibonacci sequence
+COUNT    DS.B		1				 Variable to hold the users chosen sequence length 
 * 
 ************************************************************************* 
 * 
@@ -81,7 +60,7 @@ RESET:   EQU      *
          CLR.B    ECHO(A6)          Set automatic character echo 
          CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
          BSR      SETACIA           Setup ACIAs 
-	 	 *BSR.L	  X_SET		    	(initialize Exception Vector Table)
+	 	  BSR.L	   X_SET		    	(initialize Exception Vector Table)
          BSR.L    SET_DCB           Setup DCB table in RAM
          BSR	  NEWLINE
          LEA.L    BANNER(PC),A4    
@@ -110,15 +89,14 @@ NO_EXT:  NOP                        Two NOPs to allow for a future
 		 CLR.L    D7                Warm entry point - clear error flag 
 		 BSR      NEWLINE           Print a newline
 		 BSR 	  LOGIN				Make sure user logs in with a valid u/p
- 
 WARM:	 CLR.L    D7                Warm entry point - clear error flag
 	     BSR      NEWLINE           Print a newline
 		 BSR      GETLINE           Get a command line 
          BSR      TIDY              Tidy up input buffer contents 
          BSR      EXECUTE           Interpret command 
          BRA      WARM              Repeat indefinitely 
+
 *
-**
 * LOGIN - Authenticate before allowing use of the 68k
 * To-do:
 *	- Validate username
@@ -378,9 +356,6 @@ SRCH7    AND.B    #$FE,CCR          Fail - clear carry to indicate
 *  FIBGEN: Generates and displays the Fibonaci sequence with the sequence
 *  length specified by the user, this function is fun as task #17 of Trap 0
 *
-FN2		 DS.B		1				 Variable to hold Fn-2 for Fibonacci sequence
-FN1		 DS.B		1				 Variable to hold Fn-1 for Fibonacci sequence
-COUNT    DS.B		1				 Variable to hold the users chosen sequence length
 FIBGEN	 LEA.L		FMES1(PC),A4	 Point to first of FibGen Instruction strings, store in A4
 		 BSR		PSTRING		 	 Print string pointed to in A4
 		 BSR		NEWLINE		 	 Print NewLine		 
@@ -904,7 +879,7 @@ AUX_OT1  BTST.B  #1,(A1)         Test for ready to transmit
          RTS 
 * 
 ************************************************************************* 
-* 
+*
 *  GETCHAR gets a character from the console device 
 *  This is the main input routine and uses the device whose name  
 *  is stored in CN_IVEC. Changing this name redirects input. 
@@ -915,49 +890,47 @@ AUX_OT1  BTST.B  #1,(A1)         Test for ready to transmit
 *         BTST  	 #3,D7           D7(3) set if open error 
 *         BNE.S   GETCH3          If error then exit now 
 *         BSR     IO_REQ          Else execute I/O transaction 
-*         AND.B   #$7F,D0         Strip msb of input 
-*         MOVE	 D0,D2
+*         AND.B   #$7F,D0         Strip msb of input
 *         TST.B   U_CASE(A6)      Test for upper -> lower case conversion 
 *         BNE.S   GETCH2          If flag not zero do not convert case 
-*		 MOVE	 D0,D2
 *         BTST  	 #6,D0           Test input for lower case 
 *         BEQ.S   GETCH2          If upper case then skip conversion 
 *         AND.B   #%11011111,D0   Else clear bit 5 for upper case conv 
-*		 MOVE.B	 D0,D2
-*GETCH2   CMP.B   #1,ECHO(A6)     Do we need to echo the input? 
-*         BEQ.S   GETCH3          If ECHO is 1 then no echo 
-*		 CMP.B	 #2,ECHO(A6)	 Should we display chars or stars?
-*		 BNE	 CHARS
+*GETCH2   CMP.B 	 #1, ECHO(A6)
+*		 BEQ.S   GETCH4
+*		 CMP.B   #0, ECHO(A6)
+*		 BEQ.S   GETCH3
 *		 MOVE.B	 D0,D2
 *		 MOVE.B	 #'*',D0
-*CHARS    BSR.S   PUTCHAR         Else echo the input 
-*GETCH3   MOVE	 D2,D0
-*		 MOVE.L  (A7)+,A0        Restore working register 
+*		 BSR.S   PUTCHAR
+*		 MOVE	 D2,D0
+*		 BRA.S	 GETCH4
+*GETCH3	 BSR.S	 PUTCHAR
+*GETCH4	 MOVE.L  (A7)+,A0        Restore working register 
 *         RTS                     and return
-
+         
 GETCHAR	 MOVE.L	 A0,-(A7)		 Save working register
 		 MOVE.B	 #5,D0			 Read single ASCII character into D1.B
 		 TRAP	 #15
 		 MOVE.B	 D1,D0			   
          AND.B   #$7F,D0         Strip msb of input
-         MOVE	 D0,D2
          TST.B   U_CASE(A6)      Test for upper -> lower case conversion 
          BNE.S   GETCH2          If flag not zero do not convert case 
-		 MOVE	 D0,D2
          BTST  	 #6,D0           Test input for lower case 
          BEQ.S   GETCH2          If upper case then skip conversion 
          AND.B   #%11011111,D0   Else clear bit 5 for upper case conv 
-		 MOVE.B	 D0,D2
-GETCH2   CMP.B   #1,ECHO(A6)     Do we need to echo the input? 
-         BEQ.S   GETCH3          If ECHO is 1 then no echo 
-		 CMP.B	 #2,ECHO(A6)	 Should we display chars or stars?
-		 BNE	 CHARS
+GETCH2   CMP.B 	 #1, ECHO(A6)
+		 BEQ.S   GETCH4
+		 CMP.B   #0, ECHO(A6)
+		 BEQ.S   GETCH3
 		 MOVE.B	 D0,D2
 		 MOVE.B	 #'*',D0
-CHARS    BSR.S   PUTCHAR         Else echo the input 
-GETCH3   MOVE	 D2,D0
-		 MOVE.L  (A7)+,A0        Restore working register 
-         RTS                     and return 
+		 BSR.S   PUTCHAR
+		 MOVE	 D2,D0
+		 BRA.S	 GETCH4
+GETCH3	 BSR.S	 PUTCHAR
+GETCH4	 MOVE.L  (A7)+,A0        Restore working register 
+         RTS                     and return
 * 
 ************************************************************************* 
 * 
@@ -978,7 +951,7 @@ PUTCHAR  MOVE.L  A0,-(A7)        Save working register
 		 MOVE.B	 D1,D0
          MOVE.L  (A7)+,A0        Restore working register 
          RTS
-* 
+ 
 ************************************************************************* 
 * 
 *  BUFF_IN and BUFF_OUT are two rudimentary input and output routines 
@@ -1042,13 +1015,13 @@ OPEN4    MOVEM.L  (A7)+,A1-A3/D0-D4 Restore working registers
 *		MOVE.L  #TRAP_0,128(A0)   Setup TRAP #0 exception vector 
 *        MOVE.L  #BRKPT,184(A0)    Setup TRAP #14 vector = breakpoint 
 *        MOVE.L  #WARM,188(A0)     Setup TRAP #15 exception vector 
-*		MOVE.W  #7,D0             Now clear the breakpoint table 
-*        LEA.L   BP_TAB(A6),A0     Point to table 
-*X_SET2  CLR.L   (A0)+             Clear an address entry 
-*        CLR.W   (A0)+             Clear the corresponding data 
-*        DBRA    D0,X_SET2         Repeat until all 8 cleared 
-*        RTS 
-* 
+X_SET	 MOVE.W  #7,D0             Now clear the breakpoint table 
+        LEA.L   BP_TAB(A6),A0     Point to table 
+X_SET2  CLR.L   (A0)+             Clear an address entry 
+        CLR.W   (A0)+             Clear the corresponding data 
+        DBRA    D0,X_SET2         Repeat until all 8 cleared 
+        RTS 
+ 
 ************************************************************************* 
 * 
 TRAP_0  EQU     *                 User links to  TS2BUG via TRAP #0 
@@ -1571,7 +1544,8 @@ COMTAB   DC.B     4,4              JUMP <address> causes execution to
 		 DC.B	 4,4
          DC.B	 'HELP'			   HELP displays the user available functions with instructions
          DC.L	 HELP-COMTAB 
-         DC.B    0,0 
+         DC.B    0,0
+ 
 * 
 ************************************************************************* 
 * 
@@ -1596,6 +1570,8 @@ DCB5     DC.B    'BUFF_IN '
 DCB6     DC.B    'BUFF_OUT' 
          DC.L    BUFF_OT,BUFFER 
          DC.W    2 
+*
+* 
 * 
 ************************************************************************* 
 * 
@@ -1620,20 +1596,6 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
