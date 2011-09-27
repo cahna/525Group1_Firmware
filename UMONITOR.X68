@@ -1,17 +1,3 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-Let's see if Forking works!
-=======
-Quit Forking Around!
->>>>>>> Test
-=======
-Quit Forking Around!
->>>>>>> Test
-=======
-Quit Forking Around!
->>>>>>> Test
-
 *       TSBUG2 - 68000 monitor - version of 27 September 2011
         ORG     $0000
         DC.L    STACK,RESET
@@ -1568,6 +1554,7 @@ DCB6     DC.B    'BUFF_OUT'
          MOVE.B		#9,D0
          TRAP		#15				Halt the simulator
          END RESET
+
 
 
 
