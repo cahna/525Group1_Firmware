@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 Let's see if Forking works!
+=======
+Quit Forking Around!
+>>>>>>> Test
 
 *       TSBUG2 - 68000 monitor - version of 27 September 2011
         ORG     $0000
