@@ -1,8 +1,8 @@
 *-----------------------------------------------------------
-* Program    :
-* Written by :
-* Date       :
-* Description:
+* Program    : G1_LAB2_PC_ExceptionTests.x68
+* Written by : Luke Spicer, Adrian Fletcher, Conor Heine
+* Date       : 9/27/2011
+* Description: Tests the exception handlers added in project 2 part 3
 *-----------------------------------------------------------
 		ORG	$4C00
 START							* first instruction of program
