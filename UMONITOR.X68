@@ -1,6 +1,10 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 Let's see if Forking works!
+=======
+Quit Forking Around!
+>>>>>>> Test
 =======
 Quit Forking Around!
 >>>>>>> Test
