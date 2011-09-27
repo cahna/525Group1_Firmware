@@ -1,3 +1,5 @@
+Quit Forking Around!
+
 *       TSBUG2 - 68000 monitor - version of 27 September 2011
         ORG     $0000
         DC.L    STACK,RESET
