@@ -9,11 +9,6 @@
 *
 
 Project 2:
-To-do:
- - Trap 0 - Write a program that calls Trap0 and uses our function
- - Demonstrate all exceptions
-BUGS:
- - LOAD command fails... (URGENT!)
 Done:
  - Fibonacci task added to Trap_0
  - COMTAB issue fixed with ORG statement at #$3000
@@ -22,6 +17,8 @@ Done:
  - Thermistor functionality
  - HELP Command
  - Vector Table (Test on hardware)
+ - Trap 0 - Write a program that calls Trap0 and uses our function
+ - Demonstrate all exceptions
 
 *
 * Documentation
