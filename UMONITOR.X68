@@ -1,4 +1,4 @@
-*       TSBUG2 - 68000 monitor - version of 05 January 2010 t
+*       TSBUG2 - 68000 monitor - version of 27 September 2011
         ORG     $0000
         DC.L    STACK,RESET
         DC.L    BUS_ER,ADD_ER,IL_ER,DIV0_ER
@@ -1554,6 +1554,7 @@ DCB6     DC.B    'BUFF_OUT'
          MOVE.B		#9,D0
          TRAP		#15				Halt the simulator
          END RESET
+
 
 
 
