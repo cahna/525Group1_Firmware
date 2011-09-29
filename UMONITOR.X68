@@ -85,7 +85,7 @@ NO_EXT: NOP                         Two NOPs to allow for a future
         
         CLR.L   D7                  Warm entry point - clear error flag
         BSR     NEWLINE             Print a newline
-        BSR     LOGIN               Make sure user logs in with a valid u/p
+*        BSR     LOGIN               Make sure user logs in with a valid u/p
 WARM:   CLR.L   D7                  Warm entry point - clear error flag
         BSR     NEWLINE             Print a newline
         BSR     GETLINE             Get a command line
