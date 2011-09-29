@@ -50,10 +50,10 @@ IS_EMU  DS.B    1
 *  buffer, removes leading/embedded spaces and interprets it by matching
 *  it with a command in the user table or the built-in table COMTAB
 *  All variables are specified with respect to A6
-*       ORG     $1000               Monitor Origin
+        ORG     $1000               Monitor Origin
 RESET:  EQU     *
         LEA.L   DATA,A6             A6 points to data area
-        MOVE.B  #1,IS_EMU(A6)       If 1 this monitor is for the emulator, 0 is for the hardware
+        MOVE.B  #0,IS_EMU(A6)       If 1 this monitor is for the emulator, 0 is for the hardware
         CLR.L   UTAB(A6)            Reset pointer to user extension table
         CLR.B   ECHO(A6)            Set automatic character echo
         CLR.B   U_CASE(A6)          Clear case conversion flag (UC<-LC)
@@ -1504,7 +1504,7 @@ COMTAB   DC.B     4,4              JUMP <address> causes execution to
          DC.B	 4,4
          DC.B	 'HELP'			   HELP displays the user available functions with instructions
          DC.L	 HELP-COMTAB
-         DC.B    0,0
+         DC.B    0,0,0
  *
 *************************************************************************
 *
