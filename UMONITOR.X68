@@ -43,7 +43,6 @@ BUFFER   DS.B     256               256 bytes for I/O buffer
 
 FN2		 DS.B		1				 Variable to hold Fn-2 for Fibonacci sequence
 FN1		 DS.B		1				 Variable to hold Fn-1 for Fibonacci sequence
-*COUNT    DS.B		1				 Variable to hold the users chosen sequence length
 IS_EMU	 DS.B		1
 * 
 ************************************************************************* 
@@ -88,7 +87,7 @@ NO_EXT:  NOP                        Two NOPs to allow for a future
 		 
 		 CLR.L    D7                Warm entry point - clear error flag 
 		 BSR      NEWLINE           Print a newline
-		 BSR 	  LOGIN				Make sure user logs in with a valid u/p
+		*BSR 	  LOGIN				Make sure user logs in with a valid u/p
 WARM:	 CLR.L    D7                Warm entry point - clear error flag
 	     BSR      NEWLINE           Print a newline
 		 BSR      GETLINE           Get a command line 
@@ -1571,6 +1570,7 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
 
 
 
