@@ -4,6 +4,8 @@
          DC.L	  BUS_ER,ADD_ER,IL_ER,DIV0_ER *,X_UN,X_UN,PRV_ER,X_UN	*$0008 through $0027
          ORG	  $0020
          DC.L	  PRV_ER
+         ORG      $0074
+         DC.L     LVL5_IR, LVL6_IR  *initialize autovectors for level 5 and 6 interrupts
          ORG	  $0080
          DC.L	  TRAP_0
          ORG	  $00B8
@@ -22,7 +24,7 @@ CTRL_A   EQU      $01               Control_A forces return to monitor
 STACK    EQU      $4400             Stack_pointer
 USTACK	 EQU	  $4800			    User Stack Pointer
 ACIA_1   EQU      $8001             Console ACIA control 
-ACIA_2   EQU      ACIA_1            Auxilary ACIA control 
+ACIA_2   EQU      $80001            Auxilary ACIA control
 TRAP_14  EQU      $4E4E             Code for TRAP #14 
 MAXCHR   EQU      64                Length of input line buffer  
 * 
@@ -91,6 +93,7 @@ NO_EXT:  NOP                        Two NOPs to allow for a future
 		 CLR.L    D7                Warm entry point - clear error flag 
 		 BSR      NEWLINE           Print a newline
 		*BSR 	  LOGIN				Make sure user logs in with a valid u/p
+		 ANDI.W   #$F8FF,SR         Initialize the interrupt mask to disable interrupts
 WARM:	 CLR.L    D7                Warm entry point - clear error flag
 	     BSR      NEWLINE           Print a newline
 		 BSR      GETLINE           Get a command line 
@@ -215,11 +218,12 @@ DONE	RTS
 *  Some initialization and basic routines 
 * 
 SETACIA  EQU      *                 Setup ACIA parameters 
-         LEA.L    ACIA_1,A0         A0 points to console ACIA 
+         LEA.L    ACIA_1,A0         A0 points to console ACIA
+         LEA.L    ACIA_2,A1         A1 points to auxilary ACIA 
          MOVE.B   #$03,(A0)         Reset ACIA1 
-         MOVE.B   #$03,1(A0)        Reset ACIA2 
+         MOVE.B   #$03,(A1)         Reset ACIA2 
          MOVE.B   #$19,(A0)         Set up ACIA1 constants (no IRQ, 
-         MOVE.B   #$19,1(A0)        RTS* low, 8 bit, no parity, 1 stop) 
+         MOVE.B   #$19,(A1)         RTS* low, 8 bit, no parity, 1 stop) 
          RTS                        Return 
 * 
 NEWLINE  EQU      *                 Move cursor to start of newline 
@@ -1570,6 +1574,7 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
 
 
 
