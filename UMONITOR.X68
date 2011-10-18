@@ -1228,8 +1228,6 @@ GO1      TST.L   D0                  If no address entered then get
          BEQ.S   GO2                 address from display frame 
          MOVE.L	  D0,-(A7)
          MOVE.W	  #$0700,-(A7)
-		 *MOVE.L  D0,TSK_T+70(A6)     Else save address in display frame 
-         *MOVE.W  #$0700,TSK_T+68(A6) Store (user mode, interrupts disabled) status in frame  
          BRA.S   RESTORE             Restore volatile environment and go 
 GO2		 LEA.L	 GOERR(PC),A4
 		 BSR	 HEADING
@@ -1242,17 +1240,7 @@ GB       BSR     BR_SET              Same as go but presets breakpoints
 *        frame and transfers it to the 68000's registers. This 
 *        re-runs a program suspended after an exception 
 * 
-RESTORE  *LEA.L   TSK_T(A6),A3        A3 points to display frame 
-         *LEA.L   74(A3),A3           A3 now points to end of frame + 4 
-         *LEA.L   4(A7),A7            Remove return address from stack 
-         *MOVE.W  #36,D0              Counter for 37 words to be moved 
-REST1    *MOVE.W  -(A3),-(A7)         Move word from display frame to stack 
-         *DBRA    D0,REST1            Repeat until entire frame moved 
-         *MOVEM.L (A7)+,D0-D7         Restore old data registers from stack 
-         *MOVEM.L (A7)+,A0-A6         Restore old address registers 
-         *LEA.L   8(A7),A7            Except SSP/USP - so adjust stack
-		 *MOVE.L	 (A7)+,A6 
-         RTE                         Return from exception to run program 
+RESTORE  RTE                         Return from exception to run program 
 * 
 TRACE    EQU     *                   TRACE exception (rudimentary version) 
          MOVE.L  MES12(PC),A4        Point to heading 
@@ -1582,6 +1570,7 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
 
 
 
