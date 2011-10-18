@@ -44,9 +44,11 @@ BP_TAB   DS.W     24                Breakpoint table
 FIRST    DS.B     512               DCB area 
 BUFFER   DS.B     256               256 bytes for I/O buffer
 
-FN2		 DS.B		1				 Variable to hold Fn-2 for Fibonacci sequence
-FN1		 DS.B		1				 Variable to hold Fn-1 for Fibonacci sequence
-IS_EMU	 DS.B		1
+FN2		 DS.B		1				Variable to hold Fn-2 for Fibonacci sequence
+FN1		 DS.B		1				Variable to hold Fn-1 for Fibonacci sequence
+IS_EMU	 DS.B		1               Variable to hold boolean to determine EMU or not
+TIME     DS.L       1               Global Variable to hold 10th of second since reset
+CHAR2    DS.B       1               Variable to hold ACIA_2 input char when interrupted
 * 
 ************************************************************************* 
 * 
@@ -66,6 +68,7 @@ RESET:   EQU      *
          CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
          BSR      SETACIA           Setup ACIAs 
          BSR.L    SET_DCB           Setup DCB table in RAM
+         CLR.L    TIME(A6)          Reset Timer! (make time=0)
          BSR	  NEWLINE
          LEA.L    BANNER(PC),A4    
          BSR      PSTRING
@@ -1076,8 +1079,34 @@ TASK16  CMP.B   #16,D1            D1 = 16 = Call RESTORE to transfer
         RTE
 TASK17	CMP.B 	#17,D1			  D1 = 17 = Call Fibinacci Sequence Generator
 		BNE.S	TASK18
-		BSR		FIBGEN			  
-TASK18  RTE 
+		BSR		FIBGEN	
+TASK18  CMP.B   #18,D1            D1 = 18 = Get ACIA_2 Input from CHAR2 Var
+        BNE.S   TASK19
+        BSR     CHAR_2            GETCHAR loads CHAR2 variable into D2   		  
+TASK19  RTE
+
+* 
+************************************************************************* 
+* 
+*  Level 5 and Level 6 Autovectored Interrupt handlers
+*  Level 5 Interrupt handles the Auxilary ACIA controller
+*  by reading in the value and giving the user access to ________
+*  Level 6 Interrupt handles 10Hz signal to produce global Time variable
+*
+LVL5_IR EQU     *
+        MOVE.L  A0,-(A7)            Save working register
+        LEA.L   ACIA_2,A0           Store Address of ACIA_2 in A0
+		MOVE.B  2(A0),CHAR2(A6)     Load contents of ACIA_2 into variable CHAR2
+        MOVE.L  (A7)+,A0            Restore working register                   
+        RTS
+        
+CHAR_2  MOVE.B  CHAR2(A6),D2        Load Char2 (last input to ACIA_2) into D2
+        RTS                         Return from subroutine
+
+LVL6_IR EQU     *                   Level 6 Interrupt, for 10Hz timer
+        ADDI.L  #1,TIME(A6)         Increment the Time global variable by 1
+        RTE                         Return from subroutine
+
 * 
 ************************************************************************* 
 * 
@@ -1574,6 +1603,7 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
 
 
 
