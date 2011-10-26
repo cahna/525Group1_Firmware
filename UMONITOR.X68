@@ -5,7 +5,7 @@
          ORG	  $0020
          DC.L	  PRV_ER
          ORG      $0074
-         DC.L     LVL5_IR, LVL6_IR  *initialize autovectors for level 5 and 6 interrupts
+         DC.L     LVL5_IR,LVL6_IR  *initialize autovectors for level 5 and 6 interrupts
          ORG	  $0080
          DC.L	  TRAP_0
          ORG	  $00B8
@@ -24,9 +24,12 @@ CTRL_A   EQU      $01               Control_A forces return to monitor
 STACK    EQU      $4400             Stack_pointer
 USTACK	 EQU	  $4800			    User Stack Pointer
 ACIA_1   EQU      $8001             Console ACIA control 
-ACIA_2   EQU      $80001            Auxilary ACIA control
+ACIA_2   EQU      ACIA_1            Auxilary ACIA control 
+ACIAC_2  EQU      $80001            Auxilary ACIA control
+ACIAD_2	 EQU	  $80003			Auxilary ACIA Data
 TRAP_14  EQU      $4E4E             Code for TRAP #14 
-MAXCHR   EQU      64                Length of input line buffer  
+MAXCHR   EQU      64                Length of input line buffer
+CS_PIA	 EQU	  $8020				CS_PIA register  
 * 
  
 DATA     EQU      $4800             Data origin 
@@ -47,8 +50,10 @@ BUFFER   DS.B     256               256 bytes for I/O buffer
 FN2		 DS.B		1				Variable to hold Fn-2 for Fibonacci sequence
 FN1		 DS.B		1				Variable to hold Fn-1 for Fibonacci sequence
 IS_EMU	 DS.B		1               Variable to hold boolean to determine EMU or not
-TIME     DS.L       1               Global Variable to hold 10th of second since reset
+TIME     DS.W       1               Global Variable to hold 10th of second since reset
 CHAR2    DS.B       1               Variable to hold ACIA_2 input char when interrupted
+BUFFFUL	 DS.B		1				Variable to tell us if the ACIA_2 CHAR2 variable is full
+DUMMY	 DS.W		1				DUMMY to read CS_PIA into
 * 
 ************************************************************************* 
 * 
@@ -69,6 +74,7 @@ RESET:   EQU      *
          BSR      SETACIA           Setup ACIAs 
          BSR.L    SET_DCB           Setup DCB table in RAM
          CLR.L    TIME(A6)          Reset Timer! (make time=0)
+         CLR.B	  BUFFFUL(A6)		Clear the ACIA_2 BUFFFUL flag
          BSR	  NEWLINE
          LEA.L    BANNER(PC),A4    
          BSR      PSTRING
@@ -96,12 +102,12 @@ NO_EXT:  NOP                        Two NOPs to allow for a future
 		 CLR.L    D7                Warm entry point - clear error flag 
 		 BSR      NEWLINE           Print a newline
 		*BSR 	  LOGIN				Make sure user logs in with a valid u/p
-		 ANDI.W   #$F8FF,SR         Initialize the interrupt mask to disable interrupts
+		 ANDI.W   #$F8FF,SR         Initialize the interrupt mask to ENABLE interrupts
 WARM:	 CLR.L    D7                Warm entry point - clear error flag
 	     BSR      NEWLINE           Print a newline
 		 BSR      GETLINE           Get a command line 
          BSR      TIDY              Tidy up input buffer contents 
-         BSR      EXECUTE           Interpret command 
+         BSR      EXECUTE           Interpret command
          BRA      WARM              Repeat indefinitely 
 
 *
@@ -221,12 +227,13 @@ DONE	RTS
 *  Some initialization and basic routines 
 * 
 SETACIA  EQU      *                 Setup ACIA parameters 
-         LEA.L    ACIA_1,A0         A0 points to console ACIA
-         LEA.L    ACIA_2,A1         A1 points to auxilary ACIA 
+         LEA.L    ACIA_1,A0         A0 points to console ACIA 
          MOVE.B   #$03,(A0)         Reset ACIA1 
-         MOVE.B   #$03,(A1)         Reset ACIA2 
+         MOVE.B   #$03,1(A0)        Reset ACIA2 
          MOVE.B   #$19,(A0)         Set up ACIA1 constants (no IRQ, 
-         MOVE.B   #$19,(A1)         RTS* low, 8 bit, no parity, 1 stop) 
+         MOVE.B   #$19,1(A0)        RTS* low, 8 bit, no parity, 1 stop)
+		 MOVE.B   #$03,ACIAC_2      Reset ACIA2 
+         MOVE.B   #$99,ACIAC_2      Set up ACIA2 constants (use IRQ, RTS* low, 8 bit, no parity, 1 stop) 
          RTS                        Return 
 * 
 NEWLINE  EQU      *                 Move cursor to start of newline 
@@ -1082,8 +1089,11 @@ TASK17	CMP.B 	#17,D1			  D1 = 17 = Call Fibinacci Sequence Generator
 		BSR		FIBGEN	
 TASK18  CMP.B   #18,D1            D1 = 18 = Get ACIA_2 Input from CHAR2 Var
         BNE.S   TASK19
-        BSR     CHAR_2            GETCHAR loads CHAR2 variable into D2   		  
-TASK19  RTE
+        BSR     CHAR_2            GETCHAR loads CHAR2 variable into D2
+TASK19	CMP.B	#19,D1			  D1 = 19 = Get Time variable into D3
+		BNE.S	TASK20
+		BSR		GETTIME
+TASK20  RTE
 
 * 
 ************************************************************************* 
@@ -1094,18 +1104,30 @@ TASK19  RTE
 *  Level 6 Interrupt handles 10Hz signal to produce global Time variable
 *
 LVL5_IR EQU     *
-        MOVE.L  A0,-(A7)            Save working register
-        LEA.L   ACIA_2,A0           Store Address of ACIA_2 in A0
-		MOVE.B  2(A0),CHAR2(A6)     Load contents of ACIA_2 into variable CHAR2
-        MOVE.L  (A7)+,A0            Restore working register                   
-        RTS
+        MOVEM.L D0-D7/A0-A6,-(A7)   Save all registers
+        MOVE.B	ACIAD_2,D0
+        ANDI.B	#$7F,D0
+		MOVE.B	D0,CHAR2(A6)
+        *BSR		PUTCHAR        
+		MOVE.B	#1,BUFFFUL(A6)		Set the BUFFFUL flag son!	
+		MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers                   
+        RTE
         
-CHAR_2  MOVE.B  CHAR2(A6),D2        Load Char2 (last input to ACIA_2) into D2
-        RTS                         Return from subroutine
+CHAR_2  CMPI.B	#1,BUFFFUL(A6)		Is the Buffful flag set? if(Buffful == 1)
+		BNE		NO_NEW				If buffful != 1 then end
+		MOVE.B  CHAR2(A6),D2        Load Char2 (last input to ACIA_2) into D2
+		CLR.B	BUFFFUL(A6)			After we read character clear the buffful flag
+		RTS							Return from subroutine
+NO_NEW  MOVE.B  #$00,D2				If buffful == 0, tell user by setting reg D2 = NULL = $00
+		RTS                         Return from subroutine
 
 LVL6_IR EQU     *                   Level 6 Interrupt, for 10Hz timer
-        ADDI.L  #1,TIME(A6)         Increment the Time global variable by 1
+		MOVE.W	CS_PIA,DUMMY(A6)	Attempt dummy read of CS_PIA to reset timer flip-flop!
+        ADDI.W  #1,TIME(A6)         Increment the Time global variable by 1
         RTE                         Return from subroutine
+		
+GETTIME MOVE.W	TIME(A6),D3			Move the contents of the Time variable into D3
+		RTS							Return from subroutine
 
 * 
 ************************************************************************* 
@@ -1259,8 +1281,8 @@ GO       BSR     PARAM               Get entry address (if any)
          BRA     PSTRING             print it and return 
 GO1      TST.L   D0                  If no address entered then get 
          BEQ.S   GO2                 address from display frame 
-         MOVE.L	  D0,-(A7)
-         MOVE.W	  #$0700,-(A7)
+         MOVE.L	 D0,-(A7)
+         MOVE.W  #$0000,-(A7)		 Enable all interrupts in user mode
          BRA.S   RESTORE             Restore volatile environment and go 
 GO2		 LEA.L	 GOERR(PC),A4
 		 BSR	 HEADING
@@ -1500,7 +1522,6 @@ FMES3	 DC.B	  ' Enter a number between 1 and 7',0,0
 FMES4	 DC.B	  ' Enter a 0 to quit the game',0,0
 FMES5	 DC.B	  ' Enter the length of the sequence: ',0,0
 FMES6	 DC.B	  ' Invalid Input, please try again.',0,0
-
 *
 *  COMTAB is the built-in command table. All entries are made up of 
 *         a string length + number of characters to match + the string 
@@ -1603,17 +1624,6 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
-
-
-
-
-
-
-
-
-
-
-
 
 
 
