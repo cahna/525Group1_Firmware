@@ -24,6 +24,7 @@ CTRL_A   EQU      $01               Control_A forces return to monitor
 STACK    EQU      $4400             Stack_pointer
 USTACK	 EQU	  $4800			    User Stack Pointer
 ACIA_1   EQU      $8001             Console ACIA control 
+ACIA_2   EQU      ACIA_1            Auxilary ACIA control 
 ACIAC_2  EQU      $80001            Auxilary ACIA control
 ACIAD_2	 EQU	  $80003			Auxilary ACIA Data
 TRAP_14  EQU      $4E4E             Code for TRAP #14 
@@ -226,10 +227,12 @@ DONE	RTS
 *  Some initialization and basic routines 
 * 
 SETACIA  EQU      *                 Setup ACIA parameters 
-         LEA.L    ACIA_1,A0         A0 points to console ACIA
+         LEA.L    ACIA_1,A0         A0 points to console ACIA 
          MOVE.B   #$03,(A0)         Reset ACIA1 
-         MOVE.B   #$19,(A0)         Set up ACIA1 constants (no IRQ, RTS* low, 8 bit, no parity, 1 stop)
-         MOVE.B   #$03,ACIAC_2      Reset ACIA2 
+         MOVE.B   #$03,1(A0)        Reset ACIA2 
+         MOVE.B   #$19,(A0)         Set up ACIA1 constants (no IRQ, 
+         MOVE.B   #$19,1(A0)        RTS* low, 8 bit, no parity, 1 stop)
+		 MOVE.B   #$03,ACIAC_2      Reset ACIA2 
          MOVE.B   #$99,ACIAC_2      Set up ACIA2 constants (use IRQ, RTS* low, 8 bit, no parity, 1 stop) 
          RTS                        Return 
 * 
@@ -1086,8 +1089,11 @@ TASK17	CMP.B 	#17,D1			  D1 = 17 = Call Fibinacci Sequence Generator
 		BSR		FIBGEN	
 TASK18  CMP.B   #18,D1            D1 = 18 = Get ACIA_2 Input from CHAR2 Var
         BNE.S   TASK19
-        BSR     CHAR_2            GETCHAR loads CHAR2 variable into D2   		  
-TASK19  RTE
+        BSR     CHAR_2            GETCHAR loads CHAR2 variable into D2
+TASK19	CMP.B	#19,D1			  D1 = 19 = Get Time variable into D3
+		BNE.S	TASK20
+		BSR		GETTIME
+TASK20  RTE
 
 * 
 ************************************************************************* 
@@ -1119,6 +1125,9 @@ LVL6_IR EQU     *                   Level 6 Interrupt, for 10Hz timer
 		MOVE.W	CS_PIA,DUMMY(A6)	Attempt dummy read of CS_PIA to reset timer flip-flop!
         ADDI.W  #1,TIME(A6)         Increment the Time global variable by 1
         RTE                         Return from subroutine
+		
+GETTIME MOVE.B	TIME(A6),D3			Move the contents of the Time variable into D3
+		RTS							Return from subroutine
 
 * 
 ************************************************************************* 
@@ -1273,7 +1282,7 @@ GO       BSR     PARAM               Get entry address (if any)
 GO1      TST.L   D0                  If no address entered then get 
          BEQ.S   GO2                 address from display frame 
          MOVE.L	 D0,-(A7)
-         MOVE.W	 #$0000,-(A7)		 Enable all interrupts in user mode
+         MOVE.W  #$0700,-(A7)		 Enable all interrupts in user mode
          BRA.S   RESTORE             Restore volatile environment and go 
 GO2		 LEA.L	 GOERR(PC),A4
 		 BSR	 HEADING
@@ -1578,10 +1587,10 @@ DCB2     DC.B    'CON_OUT '
          DC.L    CON_OUT,ACIA_1 
          DC.W    2 
 DCB3     DC.B    'AUX_IN  ' 
-         DC.L    AUX_IN,ACIAC_2 
+         DC.L    AUX_IN,ACIA_2 
          DC.W    2 
 DCB4     DC.B    'AUX_OUT ' 
-         DC.L    AUX_OUT,ACIAC_2 
+         DC.L    AUX_OUT,ACIA_2 
          DC.W    2 
 DCB5     DC.B    'BUFF_IN ' 
          DC.L    BUFF_IN,BUFFER 
@@ -1615,34 +1624,6 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
-
-
-
-
 
 
 
