@@ -1108,7 +1108,7 @@ LVL5_IR EQU     *
         MOVE.B	ACIAD_2,D0
         ANDI.B	#$7F,D0
 		MOVE.B	D0,CHAR2(A6)
-        BSR		PUTCHAR        
+        *BSR		PUTCHAR        
 		MOVE.B	#1,BUFFFUL(A6)		Set the BUFFFUL flag son!	
 		MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers                   
         RTE
@@ -1126,7 +1126,7 @@ LVL6_IR EQU     *                   Level 6 Interrupt, for 10Hz timer
         ADDI.W  #1,TIME(A6)         Increment the Time global variable by 1
         RTE                         Return from subroutine
 		
-GETTIME MOVE.B	TIME(A6),D3			Move the contents of the Time variable into D3
+GETTIME MOVE.W	TIME(A6),D3			Move the contents of the Time variable into D3
 		RTS							Return from subroutine
 
 * 
@@ -1282,7 +1282,7 @@ GO       BSR     PARAM               Get entry address (if any)
 GO1      TST.L   D0                  If no address entered then get 
          BEQ.S   GO2                 address from display frame 
          MOVE.L	 D0,-(A7)
-         MOVE.W  #$0700,-(A7)		 Enable all interrupts in user mode
+         MOVE.W  #$0000,-(A7)		 Enable all interrupts in user mode
          BRA.S   RESTORE             Restore volatile environment and go 
 GO2		 LEA.L	 GOERR(PC),A4
 		 BSR	 HEADING
@@ -1624,6 +1624,9 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
+
+
 
 
 
