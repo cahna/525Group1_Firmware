@@ -102,7 +102,6 @@ NO_EXT:  NOP                        Two NOPs to allow for a future
 		 BSR      NEWLINE           Print a newline
 		*BSR 	  LOGIN				Make sure user logs in with a valid u/p
 		 ANDI.W   #$F8FF,SR         Initialize the interrupt mask to ENABLE interrupts
-		 ORI.W    #$0700,SR         Initialize the interrupt mask to DISABLE interrupts
 WARM:	 CLR.L    D7                Warm entry point - clear error flag
 	     BSR      NEWLINE           Print a newline
 		 BSR      GETLINE           Get a command line 
@@ -228,11 +227,10 @@ DONE	RTS
 * 
 SETACIA  EQU      *                 Setup ACIA parameters 
          LEA.L    ACIA_1,A0         A0 points to console ACIA
-         *LEA.L    ACIAC_2,A1        A1 points to auxilary ACIA 
          MOVE.B   #$03,(A0)         Reset ACIA1 
-         *MOVE.B   #$03,(A1)         Reset ACIA2 
          MOVE.B   #$19,(A0)         Set up ACIA1 constants (no IRQ, RTS* low, 8 bit, no parity, 1 stop)
-         *MOVE.B   #$99,(A1)         Set up ACIA2 constants (use IRQ, RTS* low, 8 bit, no parity, 1 stop) 
+         MOVE.B   #$03,ACIAC_2      Reset ACIA2 
+         MOVE.B   #$99,ACIAC_2      Set up ACIA2 constants (use IRQ, RTS* low, 8 bit, no parity, 1 stop) 
          RTS                        Return 
 * 
 NEWLINE  EQU      *                 Move cursor to start of newline 
@@ -1101,12 +1099,12 @@ TASK19  RTE
 *
 LVL5_IR EQU     *
         MOVEM.L D0-D7/A0-A6,-(A7)   Save all registers
-        MOVE.B	ACIAC_2,D1			Load contents of ACIAC_2 into D1 for error check 
-        ANDI.B	#80,D1				Test to see if IRQ is set in satus register
-        BEQ		END_5
-        MOVE.B	ACIAD_2,CHAR2(A6)
+        MOVE.B	ACIAD_2,D0
+        ANDI.B	#$7F,D0
+		MOVE.B	D0,CHAR2(A6)
+        BSR		PUTCHAR        
 		MOVE.B	#1,BUFFFUL(A6)		Set the BUFFFUL flag son!	
-END_5   MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers                   
+		MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers                   
         RTE
         
 CHAR_2  CMPI.B	#1,BUFFFUL(A6)		Is the Buffful flag set? if(Buffful == 1)
@@ -1641,6 +1639,9 @@ DCB6     DC.B    'BUFF_OUT'
 =======
 
 >>>>>>> Stashed changes
+
+
+
 
 
 
