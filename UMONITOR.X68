@@ -51,8 +51,11 @@ FN2		 DS.B		1				Variable to hold Fn-2 for Fibonacci sequence
 FN1		 DS.B		1				Variable to hold Fn-1 for Fibonacci sequence
 IS_EMU	 DS.B		1               Variable to hold boolean to determine EMU or not
 TIME     DS.W       1               Global Variable to hold 10th of second since reset
-CHAR2    DS.B       1               Variable to hold ACIA_2 input char when interrupted
+BUFFIN   DS.B       1               Variable to keep location of current buff2 Input
+BUFFOUT  DS.B       1               Variable to keep location of current buff2 Output
 BUFFFUL	 DS.B		1				Variable to tell us if the ACIA_2 CHAR2 variable is full
+B2CNT    DS.B       1               Variable to keep track of the amount of stuff in the buffer
+BUFF2    DS.B       256             Buffer to hold ACIA_2 input characters when interrupted   
 DUMMY	 DS.W		1				DUMMY to read CS_PIA into
 * 
 ************************************************************************* 
@@ -75,6 +78,8 @@ RESET:   EQU      *
          BSR.L    SET_DCB           Setup DCB table in RAM
          CLR.L    TIME(A6)          Reset Timer! (make time=0)
          CLR.B	  BUFFFUL(A6)		Clear the ACIA_2 BUFFFUL flag
+         CLR.B    BUFFIN(A6)        Clear the ACIA_2 buff input  index
+         CLR.B    BUFFOUT(A6)       Clear the ACIA_2 buff output index
          BSR	  NEWLINE
          LEA.L    BANNER(PC),A4    
          BSR      PSTRING
@@ -102,7 +107,7 @@ NO_EXT:  NOP                        Two NOPs to allow for a future
 		 CLR.L    D7                Warm entry point - clear error flag 
 		 BSR      NEWLINE           Print a newline
 		*BSR 	  LOGIN				Make sure user logs in with a valid u/p
-		 ANDI.W   #$F8FF,SR         Initialize the interrupt mask to ENABLE interrupts
+		 ANDI.W   #$F8FF,SR         Initialize the interrupt mask to ENABLE interrupts  
 WARM:	 CLR.L    D7                Warm entry point - clear error flag
 	     BSR      NEWLINE           Print a newline
 		 BSR      GETLINE           Get a command line 
@@ -1105,20 +1110,27 @@ TASK20  RTE
 *
 LVL5_IR EQU     *
         MOVEM.L D0-D7/A0-A6,-(A7)   Save all registers
-        MOVE.B	ACIAD_2,D0
-        ANDI.B	#$7F,D0
-		MOVE.B	D0,CHAR2(A6)
-        *BSR		PUTCHAR        
-		MOVE.B	#1,BUFFFUL(A6)		Set the BUFFFUL flag son!	
-		MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers                   
+        MOVE.B	ACIAD_2,D0          Read contents of ACIA2's data register
+        ANDI.B	#$7F,D0             Remove MSB (parity bit) we don't need it to print ASCII
+        CMP.B   #255,B2CNT          Compare the buffer data amount with 255
+        BEQ     FULL                If the data amount is equals 255, buffer is full  
+        MOVE.W  #BUFF2,D1           If the buffer is not full add the buffer index value to
+        ADD.B   BUFFIN(A6),D1       the base buffer value so the last input character can be saved
+		MOVE.B	D0,(A6,D1)          Store the input character in the buffer 2!
+		ADDI.B  #1,BUFFIN(A6)       Increment the buffer index by one
+		ADDI.B  #1,B2CNT(A6)        Increment the buffer 2 data amount count
+FULL    MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers                   
         RTE
         
-CHAR_2  CMPI.B	#1,BUFFFUL(A6)		Is the Buffful flag set? if(Buffful == 1)
-		BNE		NO_NEW				If buffful != 1 then end
-		MOVE.B  CHAR2(A6),D2        Load Char2 (last input to ACIA_2) into D2
-		CLR.B	BUFFFUL(A6)			After we read character clear the buffful flag
+CHAR_2  CMPI.B	#0,B2CNT(A6)		Is the buffer data amount == 0?
+		BEQ		NO_NEW				If yes then we don't have any new character to give user
+		MOVE.W  #BUFF2,D1           If the buffer is not empty add the buffer index value to
+        ADD.B   BUFFOUT(A6),D1      the base buffer value so the first input character can be read
+		MOVE.B  (A6,D1),D2          Load the bottom char in  buffer (first input to ACIA_2) into D2
+		ADDI.B  #1,BUFFOUT(A6)      Add 1 to the buffer out index
+		SUBI.B  #1,B2CNT(A6)        Subtract 1 from the buffer 2 data amount
 		RTS							Return from subroutine
-NO_NEW  MOVE.B  #$00,D2				If buffful == 0, tell user by setting reg D2 = NULL = $00
+NO_NEW  MOVE.B  #$00,D2				If the buffer is empty buffind == 0, tell user by setting reg D2 = NULL = $00
 		RTS                         Return from subroutine
 
 LVL6_IR EQU     *                   Level 6 Interrupt, for 10Hz timer
@@ -1624,6 +1636,7 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
 
 
 
