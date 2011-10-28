@@ -51,8 +51,10 @@ FN2		 DS.B		1				Variable to hold Fn-2 for Fibonacci sequence
 FN1		 DS.B		1				Variable to hold Fn-1 for Fibonacci sequence
 IS_EMU	 DS.B		1               Variable to hold boolean to determine EMU or not
 TIME     DS.W       1               Global Variable to hold 10th of second since reset
-CHAR2    DS.B       1               Variable to hold ACIA_2 input char when interrupted
-BUFFFUL	 DS.B		1				Variable to tell us if the ACIA_2 CHAR2 variable is full
+BUFFIN   DS.B       1               Variable to keep location of current buff2 Input
+BUFFOUT  DS.B       1               Variable to keep location of current buff2 Output
+B2CNT    DS.B       1               Variable to keep track of the amount of stuff in the buffer
+BUFF2    DS.B       256             Buffer to hold ACIA_2 input characters when interrupted   
 DUMMY	 DS.W		1				DUMMY to read CS_PIA into
 * 
 ************************************************************************* 
@@ -74,7 +76,9 @@ RESET:   EQU      *
          BSR      SETACIA           Setup ACIAs 
          BSR.L    SET_DCB           Setup DCB table in RAM
          CLR.L    TIME(A6)          Reset Timer! (make time=0)
-         CLR.B	  BUFFFUL(A6)		Clear the ACIA_2 BUFFFUL flag
+         CLR.B    BUFFIN(A6)        Clear the ACIA_2 buff input  index
+         CLR.B    BUFFOUT(A6)       Clear the ACIA_2 buff output index
+         CLR.B    B2CNT(A6)         Clear the ACIA_2 buff data count
          BSR	  NEWLINE
          LEA.L    BANNER(PC),A4    
          BSR      PSTRING
@@ -102,7 +106,7 @@ NO_EXT:  NOP                        Two NOPs to allow for a future
 		 CLR.L    D7                Warm entry point - clear error flag 
 		 BSR      NEWLINE           Print a newline
 		*BSR 	  LOGIN				Make sure user logs in with a valid u/p
-		 ANDI.W   #$F8FF,SR         Initialize the interrupt mask to ENABLE interrupts
+		 ANDI.W   #$F8FF,SR         Initialize the interrupt mask to ENABLE interrupts  
 WARM:	 CLR.L    D7                Warm entry point - clear error flag
 	     BSR      NEWLINE           Print a newline
 		 BSR      GETLINE           Get a command line 
@@ -1093,33 +1097,52 @@ TASK18  CMP.B   #18,D1            D1 = 18 = Get ACIA_2 Input from CHAR2 Var
 TASK19	CMP.B	#19,D1			  D1 = 19 = Get Time variable into D3
 		BNE.S	TASK20
 		BSR		GETTIME
-TASK20  RTE
+TASK20  CMP.B	#20,D1			  D1 = 20 = Flush the ring buffer
+		BNE.S	TASK21
+		BSR		FLSHBUF
+TASK21  RTE
 
 * 
 ************************************************************************* 
 * 
 *  Level 5 and Level 6 Autovectored Interrupt handlers
 *  Level 5 Interrupt handles the Auxilary ACIA controller
-*  by reading in the value and giving the user access to ________
+*  by reading in the value and giving the user access to the character in a 
+*  256 byte ring buffer which is read using the task 18 trap #0 call 
 *  Level 6 Interrupt handles 10Hz signal to produce global Time variable
+*  which is accessed by the user through the task 19 trap #0 call
 *
 LVL5_IR EQU     *
         MOVEM.L D0-D7/A0-A6,-(A7)   Save all registers
-        MOVE.B	ACIAD_2,D0
-        ANDI.B	#$7F,D0
-		MOVE.B	D0,CHAR2(A6)
-        *BSR		PUTCHAR        
-		MOVE.B	#1,BUFFFUL(A6)		Set the BUFFFUL flag son!	
-		MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers                   
+        MOVE.B	ACIAD_2,D0          Read contents of ACIA2's data register
+        ANDI.B	#$7F,D0             Remove MSB (parity bit) we don't need it to print ASCII
+        CMP.B   #255,B2CNT(A6)      Compare the buffer data amount with 255
+        BEQ     FULL                If the data amount is equals 255, buffer is full
+		CLR.W	D1					Clear D1 before calculating address of head of ring buffer
+        MOVE.B  BUFFIN(A6),D1       If the buffer is not full add the buffer index value
+		ADD.W   #BUFF2,D1           to the base buffer value so the last input character can be saved
+		MOVE.B	D0,(A6,D1)          Store the input character in the buffer 2!
+		ADDI.B  #1,BUFFIN(A6)       Increment the buffer index by one
+		ADDI.B  #1,B2CNT(A6)        Increment the buffer 2 data amount count
+FULL    MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers                   
         RTE
         
-CHAR_2  CMPI.B	#1,BUFFFUL(A6)		Is the Buffful flag set? if(Buffful == 1)
-		BNE		NO_NEW				If buffful != 1 then end
-		MOVE.B  CHAR2(A6),D2        Load Char2 (last input to ACIA_2) into D2
-		CLR.B	BUFFFUL(A6)			After we read character clear the buffful flag
+CHAR_2  CMPI.B	#0,B2CNT(A6)		Is the buffer data amount == 0?
+		BEQ		NO_NEW				If yes then we don't have any new character to give user
+		CLR.W	D1					Clear D1 before calculating address of head of ring buffer
+		MOVE.B	BUFFOUT(A6),D1		If the buffer is not empty add the buffer out index value to
+		ADD.W   #BUFF2,D1			the base buffer value so the first input character can be read	     
+		MOVE.B  (A6,D1),D2          Load the bottom char in  buffer (first input to ACIA_2) into D2
+		ADDI.B  #1,BUFFOUT(A6)      Add 1 to the buffer out index
+		SUBI.B  #1,B2CNT(A6)        Subtract 1 from the buffer 2 data amount
 		RTS							Return from subroutine
-NO_NEW  MOVE.B  #$00,D2				If buffful == 0, tell user by setting reg D2 = NULL = $00
+NO_NEW  MOVE.B  #$00,D2				If the buffer is empty buffind == 0, tell user by setting reg D2 = NULL = $00
 		RTS                         Return from subroutine
+		
+FLSHBUF CLR.B    BUFFIN(A6)         Clear the ACIA_2 buff input  index
+        CLR.B    BUFFOUT(A6)        Clear the ACIA_2 buff output index
+        CLR.B    B2CNT(A6)          Clear the ACIA_2 buff data count
+		RTS
 
 LVL6_IR EQU     *                   Level 6 Interrupt, for 10Hz timer
 		MOVE.W	CS_PIA,DUMMY(A6)	Attempt dummy read of CS_PIA to reset timer flip-flop!
@@ -1571,8 +1594,6 @@ COMTAB   DC.B     4,4              JUMP <address> causes execution to
          DC.B	 'HELP'			   HELP displays the user available functions with instructions
          DC.L	 HELP-COMTAB 
          DC.B    0,0
-
-
  
 * 
 ************************************************************************* 
@@ -1624,6 +1645,11 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
+
+
+
+
 
 
 
