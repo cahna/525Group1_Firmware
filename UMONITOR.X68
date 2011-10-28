@@ -53,7 +53,6 @@ IS_EMU	 DS.B		1               Variable to hold boolean to determine EMU or not
 TIME     DS.W       1               Global Variable to hold 10th of second since reset
 BUFFIN   DS.B       1               Variable to keep location of current buff2 Input
 BUFFOUT  DS.B       1               Variable to keep location of current buff2 Output
-BUFFFUL	 DS.B		1				Variable to tell us if the ACIA_2 CHAR2 variable is full
 B2CNT    DS.B       1               Variable to keep track of the amount of stuff in the buffer
 BUFF2    DS.B       256             Buffer to hold ACIA_2 input characters when interrupted   
 DUMMY	 DS.W		1				DUMMY to read CS_PIA into
@@ -77,9 +76,9 @@ RESET:   EQU      *
          BSR      SETACIA           Setup ACIAs 
          BSR.L    SET_DCB           Setup DCB table in RAM
          CLR.L    TIME(A6)          Reset Timer! (make time=0)
-         CLR.B	  BUFFFUL(A6)		Clear the ACIA_2 BUFFFUL flag
          CLR.B    BUFFIN(A6)        Clear the ACIA_2 buff input  index
          CLR.B    BUFFOUT(A6)       Clear the ACIA_2 buff output index
+         CLR.B    B2CNT(A6)         Clear the ACIA_2 buff data count
          BSR	  NEWLINE
          LEA.L    BANNER(PC),A4    
          BSR      PSTRING
@@ -1105,17 +1104,20 @@ TASK20  RTE
 * 
 *  Level 5 and Level 6 Autovectored Interrupt handlers
 *  Level 5 Interrupt handles the Auxilary ACIA controller
-*  by reading in the value and giving the user access to ________
+*  by reading in the value and giving the user access to the character in a 
+*  256 byte ring buffer which is read using the task 18 trap #0 call 
 *  Level 6 Interrupt handles 10Hz signal to produce global Time variable
+*  which is accessed by the user through the task 19 trap #0 call
 *
 LVL5_IR EQU     *
         MOVEM.L D0-D7/A0-A6,-(A7)   Save all registers
         MOVE.B	ACIAD_2,D0          Read contents of ACIA2's data register
         ANDI.B	#$7F,D0             Remove MSB (parity bit) we don't need it to print ASCII
-        CMP.B   #255,B2CNT          Compare the buffer data amount with 255
-        BEQ     FULL                If the data amount is equals 255, buffer is full  
-        MOVE.W  #BUFF2,D1           If the buffer is not full add the buffer index value to
-        ADD.B   BUFFIN(A6),D1       the base buffer value so the last input character can be saved
+        CMP.B   #255,B2CNT(A6)      Compare the buffer data amount with 255
+        BEQ     FULL                If the data amount is equals 255, buffer is full
+		CLR.W	D1					Clear D1 before calculating address of head of ring buffer
+        MOVE.B  BUFFIN(A6),D1       If the buffer is not full add the buffer index value
+		ADD.W   #BUFF2,D1           to the base buffer value so the last input character can be saved
 		MOVE.B	D0,(A6,D1)          Store the input character in the buffer 2!
 		ADDI.B  #1,BUFFIN(A6)       Increment the buffer index by one
 		ADDI.B  #1,B2CNT(A6)        Increment the buffer 2 data amount count
@@ -1124,8 +1126,9 @@ FULL    MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers
         
 CHAR_2  CMPI.B	#0,B2CNT(A6)		Is the buffer data amount == 0?
 		BEQ		NO_NEW				If yes then we don't have any new character to give user
-		MOVE.W  #BUFF2,D1           If the buffer is not empty add the buffer index value to
-        ADD.B   BUFFOUT(A6),D1      the base buffer value so the first input character can be read
+		CLR.W	D1					Clear D1 before calculating address of head of ring buffer
+		MOVE.B	BUFFOUT(A6),D1		If the buffer is not empty add the buffer out index value to
+		ADD.W   #BUFF2,D1			the base buffer value so the first input character can be read	     
 		MOVE.B  (A6,D1),D2          Load the bottom char in  buffer (first input to ACIA_2) into D2
 		ADDI.B  #1,BUFFOUT(A6)      Add 1 to the buffer out index
 		SUBI.B  #1,B2CNT(A6)        Subtract 1 from the buffer 2 data amount
@@ -1583,8 +1586,6 @@ COMTAB   DC.B     4,4              JUMP <address> causes execution to
          DC.B	 'HELP'			   HELP displays the user available functions with instructions
          DC.L	 HELP-COMTAB 
          DC.B    0,0
-
-
  
 * 
 ************************************************************************* 
@@ -1636,6 +1637,10 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
+
+
+
 
 
 
