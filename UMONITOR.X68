@@ -1097,7 +1097,10 @@ TASK18  CMP.B   #18,D1            D1 = 18 = Get ACIA_2 Input from CHAR2 Var
 TASK19	CMP.B	#19,D1			  D1 = 19 = Get Time variable into D3
 		BNE.S	TASK20
 		BSR		GETTIME
-TASK20  RTE
+TASK20  CMP.B	#20,D1			  D1 = 20 = Flush the ring buffer
+		BNE.S	TASK21
+		BSR		FLSHBUF
+TASK21  RTE
 
 * 
 ************************************************************************* 
@@ -1135,6 +1138,11 @@ CHAR_2  CMPI.B	#0,B2CNT(A6)		Is the buffer data amount == 0?
 		RTS							Return from subroutine
 NO_NEW  MOVE.B  #$00,D2				If the buffer is empty buffind == 0, tell user by setting reg D2 = NULL = $00
 		RTS                         Return from subroutine
+		
+FLSHBUF CLR.B    BUFFIN(A6)         Clear the ACIA_2 buff input  index
+        CLR.B    BUFFOUT(A6)        Clear the ACIA_2 buff output index
+        CLR.B    B2CNT(A6)          Clear the ACIA_2 buff data count
+		RTS
 
 LVL6_IR EQU     *                   Level 6 Interrupt, for 10Hz timer
 		MOVE.W	CS_PIA,DUMMY(A6)	Attempt dummy read of CS_PIA to reset timer flip-flop!
