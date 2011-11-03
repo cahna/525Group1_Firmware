@@ -5,7 +5,8 @@
          ORG	  $0020
          DC.L	  PRV_ER
          ORG      $0074
-         DC.L     LVL5_IR,LVL6_IR  *initialize autovectors for level 5 and 6 interrupts
+         *DC.L     LVL5_IR,LVL6_IR  *initialize autovectors for level 5 and 6 interrupts
+         DC.L	  LVL5_IR
          ORG	  $0080
          DC.L	  TRAP_0
          ORG	  $00B8
@@ -1499,7 +1500,7 @@ LPWRITE CLR.B 	FINFLAG(A6)			Reset finish flag to zero
 		BTST	#0,PCDR				Test printer error status on pin PC0
 		BEQ.S	PERROR				If PE = 0 then printer error 
 		BTST	#1,PCDR				Test SLCT status on PC1 
-		BEQ.S	LPWGO				If SLCT = 0 then printer on--Å]line 
+		BEQ.S	LPWGO				If SLCT = 0 then printer on-line 
 PERROR 	ST 		D0					Set	D0 to fs (to indicate error) 
 		RTE							Return following error 
 LPWGO 	BSET	#1,PACR				Enable H1S interrupt 
