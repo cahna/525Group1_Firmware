@@ -5,8 +5,7 @@
          ORG	  $0020
          DC.L	  PRV_ER
          ORG      $0074
-         *DC.L     LVL5_IR,LVL6_IR  *initialize autovectors for level 5 and 6 interrupts
-         DC.L	  LVL5_IR
+         DC.L     LVL5_IR,LVL6_IR  *initialize autovectors for level 5 and 6 interrupts
          ORG	  $0080
          DC.L	  TRAP_0
          ORG	  $00B8
