@@ -10,6 +10,8 @@
          DC.L	  TRAP_0
          ORG	  $00B8
 		 DC.L	  BRKPT,WARM
+		 ORG	  $0100
+		 DC.L	  LPINTR
 		 
  		 *ORG	  $0400
 *                                   Symbol equates 
@@ -1476,7 +1478,7 @@ REG_MD5  MOVE.W  D0,(A2)             Store SR (one word)
 * FINFLAG is the finished flag and is set to all fs to denote printing 
 * finished (all fs otherwise).
 *
-LPOPEN 	ST		FINFLAG 			FINFLAG = $FF = finished. Printer idle
+LPOPEN 	ST		FINFLAG(A6) 		FINFLAG = $FF = finished. Printer idle
 		MOVE.B	#$7F,PADDR			Setup port A for 7-bit output, 1-bit input
 		MOVE.B	#$78,PACR			Port A=submode 01, pulsed H2
 		MOVE.B	#$10,PGCR			Enable port A, mode 0
@@ -1491,17 +1493,17 @@ LPOPEN 	ST		FINFLAG 			FINFLAG = $FF = finished. Printer idle
 * interrupt will get through. On exit, D0 holds the status.
 *
  
-LPWRITE CLR.B 	FINFLAG				Reset finish flag to zero 
-		MOVE.L	D0,BYTECNT			Save user parameter (byte count)
-		MOVE.L	A0,BUFFADDR			Save user parameter (buffer pointer)
+LPWRITE CLR.B 	FINFLAG(A6)			Reset finish flag to zero 
+		MOVE.L	D0,BYTECNT(A6)		Save user parameter (byte count)
+		MOVE.L	A0,BUFFADDR(A6)		Save user parameter (buffer pointer)
 		BTST	#0,PCDR				Test printer error status on pin PC0
 		BEQ.S	PERROR				If PE = 0 then printer error 
 		BTST	#1,PCDR				Test SLCT status on PC1 
 		BEQ.S	LPWGO				If SLCT = 0 then printer on--Å]line 
-PERROR 	ST 		D0					Set	D0 to 1Åfs (to indicate error) 
+PERROR 	ST 		D0					Set	D0 to fs (to indicate error) 
 		RTE							Return following error 
 LPWGO 	BSET	#1,PACR				Enable H1S interrupt 
-LPW1	TST.B   FINFLAG				Wait until FINFLAG = $FF 
+LPW1	TST.B   FINFLAG(A6)			Wait until FINFLAG = $FF 
 		BEQ.S   LPW1				LPINTR clears FINFLAG 
 		CLR.B 	D0					Clear returned status. no error
 		RTE							Return
@@ -1511,18 +1513,18 @@ LPW1	TST.B   FINFLAG				Wait until FINFLAG = $FF
 * PIT interrupt mode is disabled. 
 * 
 LPINTR	MOVE.L 	A0,-(SP) 			Save current A0 on stack
-		MOVEA.L BUFFADDR,A0			Get address of message buffer
-		TST.L	BYTECNT				Examine byte count
+		MOVEA.L BUFFADDR(A6),A0		Get address of message buffer
+		TST.L	BYTECNT(A6)			Examine byte count
 		BEQ.S	EMPTY				If zero then printing is done 
 PRINT	MOVE.B	(A0)+,PADR			Send a character to the printer 
-		SUBQ.L	#1,BYTECNT			One less char to be printed
+		SUBQ.L	#1,BYTECNT(A6)		One less char to be printed
 		BEQ.S 	EMPTY				If count zero then Stop printing
 		BTST	#0,PSR				Room for another char in PI/T?
 		BNE.S	PRINT				If room then print again
 		BRA.S	NOTRDY				Otherwise PI/T is not ready 
 EMPTY   BCLR	#1,PACR				Disable H1S interrupts 
-		ST 		FINFLAG				Set the finished printing status 
-NOTRDY 	MOVE.L	A0,BUFFADDR			Save buffer address 
+		ST 		FINFLAG(A6)			Set the finished printing status 
+NOTRDY 	MOVE.L	A0,BUFFADDR(A6)		Save buffer address 
 		MOVE.L 	(SP)+,A0			Restore original A0 from stack
 		RTE
 
