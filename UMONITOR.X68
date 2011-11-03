@@ -30,7 +30,16 @@ ACIAD_2	 EQU	  $80003			Auxilary ACIA Data
 TRAP_14  EQU      $4E4E             Code for TRAP #14 
 MAXCHR   EQU      64                Length of input line buffer
 CS_PIA	 EQU	  $8020				CS_PIA register  
-* 
+
+PIT		 EQU	  $080000			Base address of the PI/T 
+PGCR	 EQU	  PIT+1				Port general control register
+PSRR	 EQU	  PIT+3				Port service request register
+PADDR	 EQU      PIT+5				Port A data direction register
+PIVR	 EQU	  PIT+$B			Port interrupt vector register 
+PACR	 EQU	  PIT+$D			Port A control register 
+PADR	 EQU   	  PIT+$11 			Port A data register 
+PCDR	 EQU      PIT+$19			Port C data register
+PSR		 EQU 	  PIT+$1B			Port status register
  
 DATA     EQU      $4800             Data origin 
 LNBUFF   DS.B     MAXCHR            Input line buffer
@@ -75,6 +84,7 @@ RESET:   EQU      *
          CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
          BSR      SETACIA           Setup ACIAs 
          BSR.L    SET_DCB           Setup DCB table in RAM
+         BSR	  LPOPEN			Setup printer
          CLR.L    TIME(A6)          Reset Timer! (make time=0)
          CLR.B    BUFFIN(A6)        Clear the ACIA_2 buff input  index
          CLR.B    BUFFOUT(A6)       Clear the ACIA_2 buff output index
@@ -236,8 +246,8 @@ SETACIA  EQU      *                 Setup ACIA parameters
          MOVE.B   #$03,1(A0)        Reset ACIA2 
          MOVE.B   #$19,(A0)         Set up ACIA1 constants (no IRQ, 
          MOVE.B   #$19,1(A0)        RTS* low, 8 bit, no parity, 1 stop)
-		 MOVE.B   #$03,ACIAC_2      Reset ACIA2 
-         MOVE.B   #$99,ACIAC_2      Set up ACIA2 constants (use IRQ, RTS* low, 8 bit, no parity, 1 stop) 
+		 *MOVE.B   #$03,ACIAC_2      Reset ACIA2 
+         *MOVE.B   #$99,ACIAC_2      Set up ACIA2 constants (use IRQ, RTS* low, 8 bit, no parity, 1 stop) 
          RTS                        Return 
 * 
 NEWLINE  EQU      *                 Move cursor to start of newline 
@@ -1090,17 +1100,25 @@ TASK16  CMP.B   #16,D1            D1 = 16 = Call RESTORE to transfer
         RTE
 TASK17	CMP.B 	#17,D1			  D1 = 17 = Call Fibinacci Sequence Generator
 		BNE.S	TASK18
-		BSR		FIBGEN	
+		BSR		FIBGEN
+		RTE
 TASK18  CMP.B   #18,D1            D1 = 18 = Get ACIA_2 Input from CHAR2 Var
         BNE.S   TASK19
         BSR     CHAR_2            GETCHAR loads CHAR2 variable into D2
+        RTE
 TASK19	CMP.B	#19,D1			  D1 = 19 = Get Time variable into D3
 		BNE.S	TASK20
 		BSR		GETTIME
+		RTE
 TASK20  CMP.B	#20,D1			  D1 = 20 = Flush the ring buffer
 		BNE.S	TASK21
 		BSR		FLSHBUF
-TASK21  RTE
+		RTE
+TASK21  CMP.B	#21,D1			  D1 = 21 = Print (LPWRITE)
+		BNE.S	TASK22
+		BSR		LPWRITE
+		RTE
+TASK22	RTE
 
 * 
 ************************************************************************* 
@@ -1450,6 +1468,64 @@ REG_MD4  CMP.L   #68,D2              If this address is the SR then
 REG_MD5  MOVE.W  D0,(A2)             Store SR (one word) 
          RTS
 
+*
+* LPOPEN This initialization routine is called to open the printer channel and
+* configures the PI/T before it can be used. Port A is set p to operate in an 8-bit,
+* double-buffered mode, and H2 is programmed to provide a pulsed output 
+* handshake.
+* FINFLAG is the finished flag and is set to all fs to denote printing 
+* finished (all fs otherwise).
+*
+LPOPEN 	ST		FINFLAG 			FINFLAG = $FF = finished. Printer idle
+		MOVE.B	#$7F,PADDR			Setup port A for 7-bit output, 1-bit input
+		MOVE.B	#$78,PACR			Port A=submode 01, pulsed H2
+		MOVE.B	#$10,PGCR			Enable port A, mode 0
+		MOVE.B	#$40,PIVR			Load the PI/Tfs interrupt vector number
+		MOVE.B	#$18,PSRR			Enable	PI/Ts interrupt pins 
+		RTS							Initialize complete, return
+
+*
+* LPWRITE This is called from a user program via a TRAP instruction. The byte
+* count is in D0 and A0 points to the message buffer. If the printer is online or
+* selected then this routine enables the 68230 interrupt mode so the printer
+* interrupt will get through. On exit, D0 holds the status.
+*
+ 
+LPWRITE CLR.B 	FINFLAG				Reset finish flag to zero 
+		MOVE.L	D0,BYTECNT			Save user parameter (byte count)
+		MOVE.L	A0,BUFFADDR			Save user parameter (buffer pointer)
+		BTST	#0,PCDR				Test printer error status on pin PC0
+		BEQ.S	PERROR				If PE = 0 then printer error 
+		BTST	#1,PCDR				Test SLCT status on PC1 
+		BEQ.S	LPWGO				If SLCT = 0 then printer on--]line 
+PERROR 	ST 		D0					Set	D0 to 1fs (to indicate error) 
+		RTE							Return following error 
+LPWGO 	BSET	#1,PACR				Enable H1S interrupt 
+LPW1	TST.B   FINFLAG				Wait until FINFLAG = $FF 
+		BEQ.S   LPW1				LPINTR clears FINFLAG 
+		CLR.B 	D0					Clear returned status. no error
+		RTE							Return
+*
+* LPINTR Printer interrupt service routine. This gets characters from the
+* message buffer then sends them to the PI/T. When the printing is complete, the
+* PIT interrupt mode is disabled. 
+* 
+LPINTR	MOVE.L 	A0,-(SP) 			Save current A0 on stack
+		MOVEA.L BUFFADDR,A0			Get address of message buffer
+		TST.L	BYTECNT				Examine byte count
+		BEQ.S	EMPTY				If zero then printing is done 
+PRINT	MOVE.B	(A0)+,PADR			Send a character to the printer 
+		SUBQ.L	#1,BYTECNT			One less char to be printed
+		BEQ.S 	EMPTY				If count zero then Stop printing
+		BTST	#0,PSR				Room for another char in PI/T?
+		BNE.S	PRINT				If room then print again
+		BRA.S	NOTRDY				Otherwise PI/T is not ready 
+EMPTY   BCLR	#1,PACR				Disable H1S interrupts 
+		ST 		FINFLAG				Set the finished printing status 
+NOTRDY 	MOVE.L	A0,BUFFADDR			Save buffer address 
+		MOVE.L 	(SP)+,A0			Restore original A0 from stack
+		RTE
+
 * 
 ************************************************************************* 
 *  HELP: Displays each available function with instructions for use
@@ -1545,6 +1621,10 @@ FMES3	 DC.B	  ' Enter a number between 1 and 7',0,0
 FMES4	 DC.B	  ' Enter a 0 to quit the game',0,0
 FMES5	 DC.B	  ' Enter the length of the sequence: ',0,0
 FMES6	 DC.B	  ' Invalid Input, please try again.',0,0
+* Parallel printer-specific variables (Project 5)
+BUFFADDR DC.L	  1					;Space for buffer pointer
+BYTECNT	 DC.L	  1					;Space for byte counter
+FINFLAG	 DC.B	  1					;Space for finish flag
 *
 *  COMTAB is the built-in command table. All entries are made up of 
 *         a string length + number of characters to match + the string 
@@ -1645,6 +1725,7 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
 
 
 
