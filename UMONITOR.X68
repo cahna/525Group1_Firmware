@@ -1,19 +1,46 @@
-*        TSBUG2 - 68000 monitor - version of 05 January 2010 t
-		 ORG      $0000					
-         DC.L     STACK,RESET
-         DC.L	  BUS_ER,ADD_ER,IL_ER,DIV0_ER
-         ORG	  $0020
-         DC.L	  PRV_ER
-         ORG      $0074
-         DC.L     LVL5_IR,LVL6_IR  	*initialize autovectors for level 5 and 6 interrupts
-         ORG	  $0080
-         DC.L	  TRAP_0
-         ORG	  $00B8
-		 DC.L	  BRKPT,WARM
-		 ORG	  $0100
-		 DC.L	  LPINTR
+*       CECS 525 Group 1 Firmware for the Minimal Computer System 11/4/2011
+		ORG			$0000					
+		DC.L		STACK,RESET
+		DC.L		BUS_ER,ADD_ER,IL_ER,DIV0_ER
+		ORG			$0018
+		DC.L		X_UN,X_UN 										* Next memory location is $0020
+		ORG			$0020
+		DC.L		PRV_ER
+		ORG			$0024
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN								* Next memory location is $0074
+		ORG			$0074
+		DC.L		LVL5_IR,LVL6_IR  	*initialize autovectors for level 5 and 6 interrupts
+		DC.L		X_UN											* Next memory location is $0080
+		ORG			$0080
+		DC.L		TRAP_0
+		ORG			$0084
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+																	* Next memory location is $00B8
+		ORG			$00B8
+		DC.L		BRKPT,WARM
+		ORG			$00C0
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+																	* Next memory location is $0100
+		ORG			$0100
+		DC.L		LPINTR
 		 
- 		 *ORG	  $0400
+		* Exception vectors for Unhandled exception (point to general unhandled exception handler)
+		ORG			$0104
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+		DC.L		X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN,X_UN
+																	* Next memory location is $0400
+		
 *                                   Symbol equates 
 BS       EQU      $08               Back_space 
 CR       EQU      $0D               Carriage_return 
@@ -1728,6 +1755,7 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
 
 
 
