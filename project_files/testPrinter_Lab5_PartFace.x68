@@ -58,35 +58,20 @@ DEBUG 	MOVE.L 	#4,D1
 * Variables and Strings
 DCALC	DC.B	'Calculating length of string...',0
 DPRNT	DC.B	'About to print: '
-PRNTSTR	DC.B	NL,CR,'                         oooo$$$$$$$$$$$$oooo',NL,CR
-	DC.B	NL,CR,'                      oo$$$$$$$$$$$$$$$$$$$$$$$$o',NL,CR
-	DC.B	NL,CR,'                   oo$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$o         o$   $$ o$',NL,CR
-	DC.B	NL,CR,'   o $ oo        o$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$o       $$ $$ $$o$',NL,CR
-	DC.B	NL,CR,'oo $ $ "$      o$$$$$$$$$    $$$$$$$$$$$$$    $$$$$$$$$o       $$$o$$o$',NL,CR
-	DC.B	NL,CR,'"$$$$$$o$     o$$$$$$$$$      $$$$$$$$$$$      $$$$$$$$$$o    $$$$$$$$',NL,CR
-	DC.B	NL,CR,'  $$$$$$$    $$$$$$$$$$$      $$$$$$$$$$$      $$$$$$$$$$$$$$$$$$$$$$$',NL,CR
-	DC.B	NL,CR,'  $$$$$$$$$$$$$$$$$$$$$$$    $$$$$$$$$$$$$    $$$$$$$$$$$$$$  """$$$',NL,CR
-	DC.B	NL,CR,'   "$$$""""$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$     "$$$',NL,CR
-	DC.B	NL,CR,'    $$$   o$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$     "$$$o',NL,CR
-	DC.B	NL,CR,'   o$$"   $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$       $$$o',NL,CR
-	DC.B	NL,CR,'   $$$    $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$" "$$$$$$ooooo$$$$o',NL,CR
-	DC.B	NL,CR,'  o$$$oooo$$$$$  $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$   o$$$$$$$$$$$$$$$$$',NL,CR
-	DC.B	NL,CR,'  $$$$$$$$"$$$$   $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$     $$$$""""""""',NL,CR
-	DC.B	NL,CR,' """"       $$$$    "$$$$$$$$$$$$$$$$$$$$$$$$$$$$"      o$$$',NL,CR
-	DC.B	NL,CR,'            "$$$o     """$$$$$$$$$$$$$$$$$$"$$"         $$$',NL,CR
-	DC.B	NL,CR,'              $$$o          "$$""$$$$$$""""           o$$$',NL,CR
-	DC.B	NL,CR,'               $$$$o                                o$$$"',NL,CR
-	DC.B	NL,CR,'                "$$$$o      o$$$$$$o"$$$$o        o$$$$',NL,CR
-	DC.B	NL,CR,'                  "$$$$$oo     ""$$$$o$$$$$o   o$$$$""',NL,CR
-	DC.B	NL,CR,'                     ""$$$$$oooo  "$$$o$$$$$$$$$"""',NL,CR
-	DC.B	NL,CR,'                        ""$$$$$$$oo $$$$$$$$$$',NL,CR
-	DC.B	NL,CR,'                                """"$$$$$$$$$$$',NL,CR
-	DC.B	NL,CR,'                                    $$$$$$$$$$$$',NL,CR
-	DC.B	NL,CR,'                                     $$$$$$$$$$"',NL,CR
-	DC.B	NL,CR,'                                      "$$$""""',NL,CR,0
+PRNTSTR	DC.B	NL,CR,' , ; ,   .-"""""-.   , ; ,'
+		DC.B	NL,CR,' \\|/  ."         ".  \|//'
+		DC.B	NL,CR,'  \-;-/   ()   ()   \-;-/'
+		DC.B	NL,CR,'  // ;               ; \\'
+		DC.B	NL,CR,' //__; :.         .; ;__\\'
+		DC.B	NL,CR,'`-----\"."-.....-"."/-----"'
+		DC.B	NL,CR,'       ".".-.-,_."."'
+		DC.B	NL,CR,'         "(  (..-"'
+		DC.B	NL,CR,'           "-"'
+		DC.B	NL,CR,'	 DON',$27,'T PANIC',0
 DDONE	DC.B	'DONE!',0
 
 	END	START				; last line of source
+
 
 
 *~Font name~Courier New~
