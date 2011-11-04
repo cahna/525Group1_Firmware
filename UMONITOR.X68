@@ -1,11 +1,11 @@
 *        TSBUG2 - 68000 monitor - version of 05 January 2010 t
 		 ORG      $0000					
          DC.L     STACK,RESET
-         DC.L	  BUS_ER,ADD_ER,IL_ER,DIV0_ER *,X_UN,X_UN,PRV_ER,X_UN	*$0008 through $0027
+         DC.L	  BUS_ER,ADD_ER,IL_ER,DIV0_ER
          ORG	  $0020
          DC.L	  PRV_ER
          ORG      $0074
-         DC.L     LVL5_IR,LVL6_IR  *initialize autovectors for level 5 and 6 interrupts
+         DC.L     LVL5_IR,LVL6_IR  	*initialize autovectors for level 5 and 6 interrupts
          ORG	  $0080
          DC.L	  TRAP_0
          ORG	  $00B8
@@ -43,7 +43,7 @@ PADR	 EQU   	  PIT+$11 			Port A data register
 PCDR	 EQU      PIT+$19			Port C data register
 PSR		 EQU 	  PIT+$1B			Port status register
  
-DATA     EQU      $4800             Data origin 
+DATA     EQU      $4800             Data origin
 LNBUFF   DS.B     MAXCHR            Input line buffer
 BUFFEND  EQU      LNBUFF+MAXCHR-1   End of line buffer 
 BUFFPT   DS.L     1                 Pointer to line buffer 
@@ -67,6 +67,10 @@ BUFFOUT  DS.B       1               Variable to keep location of current buff2 O
 B2CNT    DS.B       1               Variable to keep track of the amount of stuff in the buffer
 BUFF2    DS.B       256             Buffer to hold ACIA_2 input characters when interrupted   
 DUMMY	 DS.W		1				DUMMY to read CS_PIA into
+* Parallel printer-specific variables (Project 5)
+BUFFADDR DS.L	  	1	 			Space for buffer pointer
+BYTECNT	 DS.L	  	1				Space for byte counter
+FINFLAG	 DS.B	  	1				Space for finish flag
 * 
 ************************************************************************* 
 * 
@@ -881,7 +885,7 @@ CON_OT2  MOVE.B  (A1),D2         Else read ACIA status register
          BTST    #0,D2           and poll ACIA until next char received 
          BEQ     CON_OT2 
 CON_OT3  BTST  	 #1,D1           Repeat 
-         BEQ     CON_OT1          until ACIA Tx ready 
+         BEQ     CON_OT1         until ACIA Tx ready 
          MOVE.B  D1,18(A0)       Store status in DCB physical error 
          MOVE.B  D0,2(A1)        Transmit output 
          MOVEM.L (A7)+,A1/D1-D2  Restore working registers 
@@ -1482,7 +1486,7 @@ LPOPEN 	ST		FINFLAG(A6) 		FINFLAG = $FF = finished. Printer idle
 		MOVE.B	#$7F,PADDR			Setup port A for 7-bit output, 1-bit input
 		MOVE.B	#$78,PACR			Port A=submode 01, pulsed H2
 		MOVE.B	#$10,PGCR			Enable port A, mode 0
-		MOVE.B	#$40,PIVR			Load the PI/TÅfs interrupt vector number
+		MOVE.B	#$40,PIVR			Load the PI/Ts interrupt vector number
 		MOVE.B	#$18,PSRR			Enable	PI/Ts interrupt pins 
 		RTS							Initialize complete, return
 
@@ -1491,7 +1495,7 @@ LPOPEN 	ST		FINFLAG(A6) 		FINFLAG = $FF = finished. Printer idle
 * count is in D0 and A0 points to the message buffer. If the printer is online or
 * selected then this routine enables the 68230 interrupt mode so the printer
 * interrupt will get through. On exit, D0 holds the status.
-*
+* 
  
 LPWRITE CLR.B 	FINFLAG(A6)			Reset finish flag to zero 
 		MOVE.L	D0,BYTECNT(A6)		Save user parameter (byte count)
@@ -1501,12 +1505,12 @@ LPWRITE CLR.B 	FINFLAG(A6)			Reset finish flag to zero
 		BTST	#1,PCDR				Test SLCT status on PC1 
 		BEQ.S	LPWGO				If SLCT = 0 then printer on-line 
 PERROR 	ST 		D0					Set	D0 to fs (to indicate error) 
-		RTE							Return following error 
+		RTS							Return following error 
 LPWGO 	BSET	#1,PACR				Enable H1S interrupt 
 LPW1	TST.B   FINFLAG(A6)			Wait until FINFLAG = $FF 
 		BEQ.S   LPW1				LPINTR clears FINFLAG 
 		CLR.B 	D0					Clear returned status. no error
-		RTE							Return
+		RTS							Return
 *
 * LPINTR Printer interrupt service routine. This gets characters from the
 * message buffer then sends them to the PI/T. When the printing is complete, the
@@ -1623,10 +1627,7 @@ FMES3	 DC.B	  ' Enter a number between 1 and 7',0,0
 FMES4	 DC.B	  ' Enter a 0 to quit the game',0,0
 FMES5	 DC.B	  ' Enter the length of the sequence: ',0,0
 FMES6	 DC.B	  ' Invalid Input, please try again.',0,0
-* Parallel printer-specific variables (Project 5)
-BUFFADDR DC.L	  1					;Space for buffer pointer
-BYTECNT	 DC.L	  1					;Space for byte counter
-FINFLAG	 DC.B	  1					;Space for finish flag
+
 *
 *  COMTAB is the built-in command table. All entries are made up of 
 *         a string length + number of characters to match + the string 
@@ -1727,6 +1728,8 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
+
 
 
 
