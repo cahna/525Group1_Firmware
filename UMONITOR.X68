@@ -1,5 +1,5 @@
 *       CECS 525 Group 1 Firmware for the Minimal Computer System 11/4/2011
-		ORG			$0000					
+		ORG			$0000	
 		DC.L		STACK,RESET
 		DC.L		BUS_ER,ADD_ER,IL_ER,DIV0_ER
 		ORG			$0018
@@ -109,6 +109,7 @@ FINFLAG	 DS.B	  	1				Space for finish flag
          ORG      $1000             Monitor Origin
 RESET:   EQU      *
 		 LEA.L    DATA,A6           A6 points to data area
+		 MOVE.L	  A6,TSK_T+56(A6)	pseudo register A6 in TSK_T must also point to data area (by Eugene)
 		 LEA.L	  USTACK,A5
 		 MOVE.L	  A5,USP			A7 points to stack register
 		 MOVE.B	  #0,IS_EMU(A6)		If 1 this monitor is for the emulator, 0 is for the hardware
@@ -117,6 +118,7 @@ RESET:   EQU      *
          CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
          BSR      SETACIA           Setup ACIAs 
          BSR.L    SET_DCB           Setup DCB table in RAM
+         BSR	  CBKPT
          *BSR	  LPOPEN			Setup printer
          CLR.L    TIME(A6)          Reset Timer! (make time=0)
          CLR.B    BUFFIN(A6)        Clear the ACIA_2 buff input  index
@@ -1060,6 +1062,21 @@ OPEN3    EQU      *              Fail - calculate address of next DCB
 OPEN4    MOVEM.L  (A7)+,A1-A3/D0-D4 Restore working registers 
          RTS 
  
+* 
+************************************************************************* 
+* 
+* clear breakpoint table
+* 
+CBKPT	MOVE.W  #7,D0             Now clear the breakpoint table 
+        LEA.L   BP_TAB(A6),A0     Point to table 
+CBKPT2  CLR.L   (A0)+             Clear an address entry 
+        CLR.W   (A0)+             Clear the corresponding data 
+        DBRA    D0,CBKPT2         Repeat until all 8 cleared 
+        RTS 
+* 
+
+ 
+ 
 ************************************************************************* 
 * 
 TRAP_0  EQU     *                 User links to  TS2BUG via TRAP #0 
@@ -1295,11 +1312,11 @@ BRKPT   EQU     *                   Deal with breakpoint
         MOVEM.L D0-D7/A0-A6,-(A7)   Save all registers 
         BSR     BR_CLR              Clear breakpoints in code 
         MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers 
-        BSR.S   GROUP2            Treat as group 2 exception 
-        LEA.L   MES11(PC),A4      Point to heading 
-        BSR     HEADING           Print it 
-        BSR     EX_DIS            Display saved registers 
-        BRA     WARM              Return to monitor
+        BSR     GROUP2            	Treat as group 2 exception 
+        LEA.L   MES11(PC),A4      	Point to heading 
+        BSR     HEADING           	Print it 
+        BSR     EX_DIS            	Display saved registers 
+        BRA     WARM              	Return to monitor
 *
  
 * 
@@ -1355,12 +1372,9 @@ GO       BSR     PARAM               Get entry address (if any)
          BRA     PSTRING             print it and return 
 GO1      TST.L   D0                  If no address entered then get 
          BEQ.S   GO2                 address from display frame 
-         MOVE.L	 D0,-(A7)
-         MOVE.W  #$0000,-(A7)		 Enable all interrupts in user mode
-         BRA.S   RESTORE             Restore volatile environment and go 
-GO2		 LEA.L	 GOERR(PC),A4
-		 BSR	 HEADING
-		 RTS
+         MOVE.L  D0,TSK_T+70(A6)     Else save address in display frame 
+         MOVE.W	 #$0700,TSK_T+68(A6) Set user mode in pseudo status register in TSK_T (by eugene)
+GO2      BRA.S   RESTORE             Restore volatile environment and go 
 * 
 GB       BSR     BR_SET              Same as go but presets breakpoints 
          BRA.S   GO                  Execute program 
@@ -1369,8 +1383,17 @@ GB       BSR     BR_SET              Same as go but presets breakpoints
 *        frame and transfers it to the 68000's registers. This 
 *        re-runs a program suspended after an exception 
 * 
-RESTORE  RTE                         Return from exception to run program 
-* 
+RESTORE  LEA.L   TSK_T(A6),A3        A3 points to display frame 
+         LEA.L   74(A3),A3           A3 now points to end of frame + 4 
+         LEA.L   4(A7),A7            Remove return address from stack 
+         MOVE.W  #36,D0              Counter for 37 words to be moved 
+REST1    MOVE.W  -(A3),-(A7)         Move word from display frame to stack 
+         DBRA    D0,REST1            Repeat until entire frame moved 
+         MOVEM.L (A7)+,D0-D7         Restore old data registers from stack 
+         MOVEM.L (A7)+,A0-A6         Restore old address registers 
+         LEA.L   8(A7),A7            Except SSP/USP - so adjust stack 
+         RTE                         Return from exception to run program 
+*
 TRACE    EQU     *                   TRACE exception (rudimentary version) 
          MOVE.L  MES12(PC),A4        Point to heading 
          BSR     HEADING             Print it 
