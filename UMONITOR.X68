@@ -173,7 +173,7 @@ NO_EXT:  NOP                        Two NOPs to allow for a future
 		 CLR.L    D7                Warm entry point - clear error flag 
 		 BSR      NEWLINE           Print a newline
 		*BSR 	  LOGIN				Make sure user logs in with a valid u/p
-		 ANDI.W   #$F8FF,SR         Initialize the interrupt mask to ENABLE interrupts  
+		 ORI.W   #$0700,SR          Initialize the interrupt mask to DISABLE interrupts  
 WARM:	 CLR.L    D7                Warm entry point - clear error flag
 	     BSR      NEWLINE           Print a newline
 		 BSR      GETLINE           Get a command line 
@@ -1858,6 +1858,7 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
 
 
 
