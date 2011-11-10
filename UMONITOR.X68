@@ -70,6 +70,25 @@ PACR	 EQU	  PIT+$D			Port A control register
 PADR	 EQU   	  PIT+$11 			Port A data register 
 PCDR	 EQU      PIT+$19			Port C data register
 PSR		 EQU 	  PIT+$1B			Port status register
+
+***********************************************************************
+*
+*	THESE ARE THE MC68881 INTERNAL REGISTERS FOR THE BASE 
+*	ADDRESS $80000 (MC68881 ADAPTER BOARD)
+*
+***********************************************************************
+MC68881		EQU	$80000	MC68881 BASE ADDRESS
+COMMAND		EQU	$0A	COMMAND REGISTER
+RESPONSE	EQU	$00	RESPONSE REGISTER
+OPER		EQU	$10	OPERAND REGISTER
+COND		EQU	$0E	CONDITION REGISTER
+SAVE		EQU	$04	SAVE REGISTER
+RESTOREFPU	EQU	$06	RESTORE REGISTER
+REGSEL		EQU	$14	REGISTER SELECT
+CONTROL		EQU	$9000	MC68881 CONTROL REGISTER
+STATUS		EQU	$8800	MC68881 STATUS REGISTER
+IADDRESS	EQU	$8400	MC68881 INSTRUCTION ADDRESS REGISTER
+TFBIT		EQU	$0	TRUE/FALSE BIT OF THE RESPONSE REGISTER
  
 DATA     EQU      $4800             Data origin
 LNBUFF   DS.B     MAXCHR            Input line buffer
@@ -1377,7 +1396,7 @@ GO1      TST.L   D0                  If no address entered then get
          BEQ.S   GO2                 address from display frame 
          MOVE.L  D0,TSK_T+70(A6)     Else save address in display frame 
          MOVE.W	 #$0700,TSK_T+68(A6) Set user mode in pseudo status register in TSK_T (by eugene)
-GO2      BRA.S   RESTORE             Restore volatile environment and go 
+GO2      BRA.s   RESTORE             Restore volatile environment and go 
 * 
 GB       BSR     BR_SET              Same as go but presets breakpoints 
          BRA.S   GO                  Execute program 
@@ -1586,22 +1605,56 @@ NOTRDY 	MOVE.L	A0,BUFFADDR(A6)		Save buffer address
 		RTE
 
 *
-* FTRAP - Handles F-Line exceptions and decoding
+* FTRAP - Handles F-Line exceptions and decoding of
+*		  CPU register to FPU register (FSQRT Dn,Fpn) (arithmetic and FMOVE)
+*		  and Reg to Mem (FMOVE FPn,FPn)
+*	
 *
 FTRAP	EQU		*
-		; SAVSTAT & SAVPC
-		MOVE.W	(A7)+,SAVSTAT(A6)	* Save Status Reg
- 		MOVE.L	(A7)+,SAVPC(A6)		* Save PC
- 				
+		* SAVSTAT & SAVPC
+		MOVE.W	(A7)+,SAVSTAT(A6)	Save Status Reg
+ 		MOVE.L	(A7)+,SAVPC(A6)		Save PC
 		MOVEM.L	D0-D7/A0-A6,-(A7) 	Save all the things
 		
-		LEA.L	FTMSG(PC),A4	  	Point to error message string		
- 		BSR		HEADING			  	Pring the error message as a heading
+		*LEA.L	FTMSG(PC),A4	  	*** Debug message, you're in the FTRAP		
+ 		*BSR		HEADING			  	Print the message as a heading
+		
+		MOVE.L	SAVPC(A6),A0		Load the pointer to the F instruction into A0
+		MOVE.W  (A0),D0				Load the F instruction into data register D0
+ 		ANDI.W	#$01C0,D0			Mask the F-Op word with $1C to determin instruction type 
+ 		BNE		NOTGEN				Not general type error
  		
-		MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers
-		ADDI.L	#4,SAVPC(A6)		* Increment PC to get home 
- 		MOVE.L	SAVPC(A6),-(A7)		* Restore Saved PC
- 		MOVE.W	SAVSTAT(A6),-(A7)	* Restore saved status register
+ 		MOVE.W	2(A0),MC68881+COMMAND 	Write Command Word to FPU Command Register
+FPULOOP CMPI	#$8900,MC68881+RESPONSE	Poll FPU Response Register Until its finished
+		BEQ.S	FPULOOP				Loop back if not finished
+
+		MOVE.W  (A0),D0				Move the Op Word into D0
+		ANDI.W	#$0007,D0			Pull out the designated register				
+		LSL.W	#2,D0				Shift left by 2 (multiply by 4)
+
+		MOVE.W	2(A0),D1			Put the command word in D1
+		ANDI.W	#$6000,D1			Check if the command is a Reg to Mem
+		CMP.W	#$6000,D1			If the command is Reg to Mem
+		BEQ		REGMEM				Jump the part where we move out of the FPU to the CPU
+									* Else just continue to place data in the FPU
+		
+MEMREG	MOVE.L	(A7,D0.W),MC68881+OPER	Move the contents of the target register to FPU OPER Reg
+		BRA		OPLOOP				If we just placed data in the FPU, skip over getting data from it
+REGMEM	MOVE.L	MC68881+OPER,(A7,D0.W)	(A7,D0.W)Move the contents of the target register to FPU OPER Reg
+OPLOOP	TST.B	MC68881+RESPONSE	Loop until the FPU tells us its finished moving stuff around
+		BMI.S	OPLOOP				
+ 		
+		*LEA.L	FTMSG2(PC),A4	  	*** Debug Message, general type instruction		
+ 		*BSR		HEADING			  	Print the message as a heading
+		BRA		RSTR				Skip over the error message, we already did our instruction
+ 		
+NOTGEN 	LEA.L	FTMSG3(PC),A4	  	Error Message, not general type message	
+ 		BSR		HEADING			  	Print the message as a heading
+ 		
+RSTR	MOVEM.L (A7)+,D0-D7/A0-A6   Restore registers
+		ADDI.L	#4,SAVPC(A6)		Increment PC to get home 
+ 		MOVE.L	SAVPC(A6),-(A7)		Restore Saved PC
+ 		MOVE.W	SAVSTAT(A6),-(A7)	Restore saved status register
 ENDFT	RTE
 
 
@@ -1702,6 +1755,8 @@ FMES5	 DC.B	  ' Enter the length of the sequence: ',0,0
 FMES6	 DC.B	  ' Invalid Input, please try again.',0,0
 *F-Line Strings
 FTMSG	 DC.B	  ' You have initiated an F-Trap decode',0,0
+FTMSG2	 DC.B	  ' You have supplied a general type instruction',0,0
+FTMSG3	 DC.B	  '	*** ERROR: NOT a general type instruction',0,0
 
 *
 *  COMTAB is the built-in command table. All entries are made up of 
@@ -1803,6 +1858,8 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
+
 
 
 

@@ -67,10 +67,12 @@ PRNTSTR	DC.B	NL,CR,' , ; ,   .-"""""-.   , ; ,'
 		DC.B	NL,CR,'       ".".-.-,_."."'
 		DC.B	NL,CR,'         "(  (..-"'
 		DC.B	NL,CR,'           "-"'
-		DC.B	NL,CR,'	 DON',$27,'T PANIC',0
+		DC.B	NL,CR,'	DON',$27,'T PANIC',0
 DDONE	DC.B	'DONE!',0
 
 	END	START				; last line of source
+
+
 
 
 
