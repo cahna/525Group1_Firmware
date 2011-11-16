@@ -60,7 +60,7 @@ TRAP_14  EQU      $4E4E             Code for TRAP #14
 MAXCHR   EQU      64                Length of input line buffer
 CS_PIA	 EQU	  $8020				CS_PIA register  
 
-PIT		 EQU	  $080000			Base address of the PI/T 
+PIT		 EQU	  $100000			Base address of the PI/T 
 PGCR	 EQU	  PIT+1				Port general control register
 PSRR	 EQU	  PIT+3				Port service request register
 PADDR	 EQU      PIT+5				Port A data direction register
@@ -69,7 +69,9 @@ PACR	 EQU	  PIT+$D			Port A control register
 PADR	 EQU   	  PIT+$11 			Port A data register 
 PCDR	 EQU      PIT+$19			Port C data register
 PSR		 EQU 	  PIT+$1B			Port status register
- 
+
+		 ORG	  $0000
+		 * RAM Variables Offset Values in Memory Relative to DATA
 DATA     EQU      $4800             Data origin
 LNBUFF   DS.B     MAXCHR            Input line buffer
 BUFFEND  EQU      LNBUFF+MAXCHR-1   End of line buffer 
@@ -109,6 +111,7 @@ FINFLAG	 DS.B	  	1				Space for finish flag
          ORG      $1000             Monitor Origin
 RESET:   EQU      *
 		 LEA.L    DATA,A6           A6 points to data area
+		 MOVE.L   A6,TSK_T+56(A6)  psuedo register in A6 in TSK_T must also point to data area
 		 LEA.L	  USTACK,A5
 		 MOVE.L	  A5,USP			A7 points to stack register
 		 MOVE.B	  #0,IS_EMU(A6)		If 1 this monitor is for the emulator, 0 is for the hardware
@@ -117,7 +120,7 @@ RESET:   EQU      *
          CLR.B    U_CASE(A6)        Clear case conversion flag (UC<-LC) 
          BSR      SETACIA           Setup ACIAs 
          BSR.L    SET_DCB           Setup DCB table in RAM
-         BSR	  LPOPEN			Setup printer
+         *BSR	  LPOPEN			Setup printer
          CLR.L    TIME(A6)          Reset Timer! (make time=0)
          CLR.B    BUFFIN(A6)        Clear the ACIA_2 buff input  index
          CLR.B    BUFFOUT(A6)       Clear the ACIA_2 buff output index
@@ -279,8 +282,8 @@ SETACIA  EQU      *                 Setup ACIA parameters
          MOVE.B   #$03,1(A0)        Reset ACIA2 
          MOVE.B   #$19,(A0)         Set up ACIA1 constants (no IRQ, 
          MOVE.B   #$19,1(A0)        RTS* low, 8 bit, no parity, 1 stop)
-		 *MOVE.B   #$03,ACIAC_2      Reset ACIA2 
-         *MOVE.B   #$99,ACIAC_2      Set up ACIA2 constants (use IRQ, RTS* low, 8 bit, no parity, 1 stop) 
+		 MOVE.B   #$03,ACIAC_2      Reset ACIA2 
+         MOVE.B   #$99,ACIAC_2      Set up ACIA2 constants (use IRQ, RTS* low, 8 bit, no parity, 1 stop) 
          RTS                        Return 
 * 
 NEWLINE  EQU      *                 Move cursor to start of newline 
@@ -1343,34 +1346,40 @@ GROUP2A MOVE.L  (A7)+,(A0)+       Move a register from stack to frame
         SUBQ.L  #2,D0             Move back to current instruction 
         MOVE.L  D0,(A0)+          Put adjusted PC in display frame 
         JMP     (A1)              Return from subroutine 
-* 
-************************************************************************* 
-* 
-*  GO executes a program either from a supplied address or 
-*  by using the data in the display frame 
-GO       BSR     PARAM               Get entry address (if any) 
-         TST.B   D7                  Test for error in input 
-         BEQ.S   GO1                 If D7 zero then OK 
-         LEA.L   ERMES1(PC),A4       Else point to error message, 
-         BRA     PSTRING             print it and return 
-GO1      TST.L   D0                  If no address entered then get 
-         BEQ.S   GO2                 address from display frame 
-         MOVE.L	 D0,-(A7)
-         MOVE.W  #$0000,-(A7)		 Enable all interrupts in user mode
-         BRA.S   RESTORE             Restore volatile environment and go 
-GO2		 LEA.L	 GOERR(PC),A4
-		 BSR	 HEADING
-		 RTS
-* 
-GB       BSR     BR_SET              Same as go but presets breakpoints 
-         BRA.S   GO                  Execute program 
-* 
-*        RESTORE moves the volatile environment from the display 
-*        frame and transfers it to the 68000's registers. This 
-*        re-runs a program suspended after an exception 
-* 
-RESTORE  RTE                         Return from exception to run program 
-* 
+*
+*************************************************************************
+*
+* GO executes a program either from a supplied address or
+* by using the data in the display frame
+GO       BSR    PARAM              Get entry address (if any)
+         TST.B  D7                 Test for error in input
+         BEQ.S  GO1                If D7 zero then OK
+         LEA.L  ERMES1(PC),A4      Else point to error message,
+         BRA    PSTRING            print it and return
+GO1      TST.L  D0                 If no address entered then get
+         BEQ.S  GO2                address from display frame
+         MOVE.L D0,TSK_T+70(A6)    Else save address in display frame
+         MOVE.W #$0000,TSK_T+68(A6) Set user mode in pseudo status register in TSK_T (by eugene)
+GO2      BRA.s  RESTORE 			Restore volatile environment and go
+*
+GB 		 BSR BR_SET 				Same as go but presets breakpoints
+         BRA.S GO 					Execute program
+*
+* RESTORE moves the volatile environment from the display
+* frame and transfers it to the 68000's registers. This
+* re-runs a program suspended after an exception
+*
+RESTORE LEA.L TSK_T(A6),A3 			A3 points to display frame
+        LEA.L 74(A3),A3 			A3 now points to end of frame + 4
+        LEA.L 4(A7),A7 				Remove return address from stack
+        MOVE.W #36,D0 				Counter for 37 words to be moved
+REST1 MOVE.W -(A3),-(A7) 			Move word from display frame to stack
+        DBRA D0,REST1 				Repeat until entire frame moved
+        MOVEM.L (A7)+,D0-D7 		Restore old data registers from stack
+        MOVEM.L (A7)+,A0-A6 		Restore old address registers
+        LEA.L 8(A7),A7 				Except SSP/USP - so adjust stack
+        RTE 						Return from exception to run program
+*    
 TRACE    EQU     *                   TRACE exception (rudimentary version) 
          MOVE.L  MES12(PC),A4        Point to heading 
          BSR     HEADING             Print it 
@@ -1755,6 +1764,9 @@ DCB6     DC.B    'BUFF_OUT'
 		 MOVE.B		#9,D0
 		 TRAP		#15				Halt the simulator
          END RESET 
+
+
+
 
 
 
